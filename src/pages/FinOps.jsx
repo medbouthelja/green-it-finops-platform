@@ -5,6 +5,7 @@ import { formatCurrency } from '../utils/formatters';
 import { LineChart, Line, BarChart, Bar, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { exportToPDF, exportToExcel } from '../utils/export';
 import toast from 'react-hot-toast';
+import Counter from '../components/Counter';
 
 const FinOps = () => {
   const [cloudData, setCloudData] = useState([]);
@@ -44,6 +45,7 @@ const FinOps = () => {
           description: 'Arrêter 3 instances EC2 non utilisées',
           savings: 450,
           priority: 'high',
+          applied: false,
         },
         {
           id: 2,
@@ -52,6 +54,7 @@ const FinOps = () => {
           description: 'Déplacer les ressources vers eu-west-3',
           savings: 200,
           priority: 'medium',
+          applied: false,
         },
         {
           id: 3,
@@ -60,6 +63,7 @@ const FinOps = () => {
           description: 'Downsizing de 2 instances t3.large vers t3.medium',
           savings: 300,
           priority: 'medium',
+          applied: false,
         },
       ]);
     } catch (error) {
@@ -72,7 +76,24 @@ const FinOps = () => {
 
   const totalCost = cloudData.reduce((sum, d) => sum + d.cost, 0);
   const avgCost = cloudData.length > 0 ? totalCost / cloudData.length : 0;
-  const totalSavings = recommendations.reduce((sum, r) => sum + r.savings, 0);
+  const totalSavings = recommendations
+    .filter((r) => !r.applied)
+    .reduce((sum, r) => sum + r.savings, 0);
+
+  const applyRecommendation = (recommendationId) => {
+    const target = recommendations.find((rec) => rec.id === recommendationId);
+    if (!target || target.applied) {
+      return;
+    }
+
+    setRecommendations((prev) =>
+      prev.map((rec) =>
+        rec.id === recommendationId ? { ...rec, applied: true } : rec
+      )
+    );
+
+    toast.success(`Action appliquée: ${target.title}`);
+  };
 
   const handleExportPDF = () => {
     const columns = [
@@ -104,7 +125,7 @@ const FinOps = () => {
             <div>
               <p className="text-sm text-gray-600">Coût cloud mensuel</p>
               <p className="text-2xl font-bold text-gray-900 mt-1">
-                {formatCurrency(avgCost)}
+                <Counter to={avgCost} duration={1200} formatValue={(value) => formatCurrency(value)} />
               </p>
             </div>
             <div className="p-3 bg-blue-100 rounded-lg">
@@ -118,7 +139,7 @@ const FinOps = () => {
             <div>
               <p className="text-sm text-gray-600">Économies potentielles</p>
               <p className="text-2xl font-bold text-green-600 mt-1">
-                {formatCurrency(totalSavings)}
+                <Counter to={totalSavings} duration={1300} formatValue={(value) => formatCurrency(value)} />
               </p>
               <p className="text-sm text-gray-500 mt-1">par mois</p>
             </div>
@@ -228,7 +249,13 @@ const FinOps = () => {
                     </div>
                   </div>
                 </div>
-                <button className="btn-primary ml-4">Appliquer</button>
+                <button
+                  onClick={() => applyRecommendation(rec.id)}
+                  className="btn-primary ml-4 disabled:opacity-50 disabled:cursor-not-allowed"
+                  disabled={rec.applied}
+                >
+                  {rec.applied ? 'Appliqué' : 'Appliquer'}
+                </button>
               </div>
             </div>
           ))}

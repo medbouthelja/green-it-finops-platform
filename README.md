@@ -113,6 +113,11 @@ src/
 - Export Excel
 - Tableaux de bord interactifs
 
+### ✅ Assistant IA
+- Chat assistant pour questions projet / budget / FinOps
+- Reponses basees sur le contexte reel (projets + alertes)
+- Compatible fournisseur IA externe via API key
+
 ## 🔐 Rôles
 
 - **ADMIN** : Accès complet
@@ -127,6 +132,14 @@ Créez un fichier `.env` à la racine :
 
 ```env
 VITE_API_URL=http://localhost:8000/api
+```
+
+Configuration IA backend optionnelle (`backend/.env`) :
+
+```env
+AI_API_KEY=your_provider_key
+AI_API_URL=https://api.openai.com/v1/chat/completions
+AI_MODEL=gpt-4o-mini
 ```
 
 ## 📝 Notes

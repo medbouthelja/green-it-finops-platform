@@ -5,6 +5,7 @@ import { formatCurrency, formatPercentage } from '../utils/formatters';
 import { BarChart, Bar, LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { exportToPDF, exportToExcel } from '../utils/export';
 import toast from 'react-hot-toast';
+import Counter from '../components/Counter';
 
 const Budget = () => {
   const [budgetData, setBudgetData] = useState([]);
@@ -104,7 +105,7 @@ const Budget = () => {
             <div>
               <p className="text-sm text-gray-600">Budget total</p>
               <p className="text-2xl font-bold text-gray-900 mt-1">
-                {formatCurrency(totalBudget)}
+                <Counter to={totalBudget} duration={1200} formatValue={(value) => formatCurrency(value)} />
               </p>
             </div>
             <div className="p-3 bg-blue-100 rounded-lg">
@@ -118,10 +119,15 @@ const Budget = () => {
             <div>
               <p className="text-sm text-gray-600">Budget consommé</p>
               <p className="text-2xl font-bold text-gray-900 mt-1">
-                {formatCurrency(totalConsumed)}
+                <Counter to={totalConsumed} duration={1300} formatValue={(value) => formatCurrency(value)} />
               </p>
               <p className="text-sm text-gray-500 mt-1">
-                {formatPercentage((totalConsumed / totalBudget) * 100)}
+                <Counter
+                  to={totalBudget > 0 ? (totalConsumed / totalBudget) * 100 : 0}
+                  duration={1100}
+                  decimals={1}
+                  formatValue={(value) => formatPercentage(value)}
+                />
               </p>
             </div>
             <div className="p-3 bg-green-100 rounded-lg">
@@ -135,7 +141,7 @@ const Budget = () => {
             <div>
               <p className="text-sm text-gray-600">Prévision finale</p>
               <p className="text-2xl font-bold text-gray-900 mt-1">
-                {formatCurrency(totalForecast)}
+                <Counter to={totalForecast} duration={1400} formatValue={(value) => formatCurrency(value)} />
               </p>
             </div>
             <div className="p-3 bg-yellow-100 rounded-lg">
@@ -149,10 +155,15 @@ const Budget = () => {
             <div>
               <p className="text-sm text-gray-600">Écart prévisionnel</p>
               <p className={`text-2xl font-bold mt-1 ${variance < 0 ? 'text-green-600' : 'text-red-600'}`}>
-                {formatCurrency(Math.abs(variance))}
+                <Counter to={Math.abs(variance)} duration={1400} formatValue={(value) => formatCurrency(value)} />
               </p>
               <p className="text-sm text-gray-500 mt-1">
-                {formatPercentage(Math.abs(variancePercent))}
+                <Counter
+                  to={Math.abs(variancePercent)}
+                  duration={1200}
+                  decimals={1}
+                  formatValue={(value) => formatPercentage(value)}
+                />
               </p>
             </div>
             <div className={`p-3 rounded-lg ${variance < 0 ? 'bg-green-100' : 'bg-red-100'}`}>

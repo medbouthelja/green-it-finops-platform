@@ -1,0 +1,143 @@
+import { useState } from 'react';
+import { MessageCircle, Send, Sparkles, X } from 'lucide-react';
+import { assistantService } from '../services/assistantService';
+
+const defaultQuickPrompts = [
+  'Quels projets sont les plus a risque budget ?',
+  "Donne-moi 3 actions FinOps prioritaires",
+  "Resume-moi l'etat global des projets",
+];
+
+const AiChatWidget = () => {
+  const [open, setOpen] = useState(false);
+  const [input, setInput] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [aiEnabled, setAiEnabled] = useState(null);
+  const [messages, setMessages] = useState([
+    {
+      role: 'assistant',
+      content:
+        "Bonjour. Je peux discuter avec vous de vos projets, du budget, des alertes ou du FinOps. Posez votre question librement — si une cle API (AI_API_KEY) est configuree cote serveur, j'utilise un modele de langage pour repondre comme une vraie conversation.",
+    },
+  ]);
+
+  const sendMessage = async (text) => {
+    const message = text.trim();
+    if (!message || loading) return;
+
+    const historyPayload = messages
+      .filter((m) => m.role === 'user' || m.role === 'assistant')
+      .map(({ role, content }) => ({ role, content }));
+
+    setMessages((prev) => [...prev, { role: 'user', content: message }]);
+    setInput('');
+    setLoading(true);
+
+    try {
+      const result = await assistantService.chat(message, historyPayload);
+      if (result.meta && typeof result.meta.aiEnabled === 'boolean') {
+        setAiEnabled(result.meta.aiEnabled);
+      }
+      const answer = result.answer || "Je n'ai pas pu generer une reponse.";
+      setMessages((prev) => [...prev, { role: 'assistant', content: answer }]);
+    } catch {
+      setMessages((prev) => [
+        ...prev,
+        {
+          role: 'assistant',
+          content:
+            "Impossible de joindre l'API assistant. Verifiez que le backend Symfony tourne et que vous etes connecte (JWT).",
+        },
+      ]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="fixed bottom-6 right-6 z-[90]">
+      {open && (
+        <div className="mb-3 w-[22rem] sm:w-[26rem] rounded-2xl border border-white/70 bg-white/95 shadow-2xl shadow-slate-950/30 backdrop-blur-md overflow-hidden">
+          <div className="px-4 py-3 bg-gradient-to-r from-emerald-500 to-teal-500 text-white flex items-center justify-between">
+            <div className="flex items-center gap-2 font-semibold">
+              <Sparkles size={16} />
+              Assistant IA
+            </div>
+            <button onClick={() => setOpen(false)} className="p-1 rounded hover:bg-white/20">
+              <X size={16} />
+            </button>
+          </div>
+          {aiEnabled === false && (
+            <div className="px-3 py-2 text-xs bg-amber-50 text-amber-900 border-b border-amber-100">
+              Modele LLM non configure : ajoutez <code className="bg-amber-100 px-1 rounded">AI_API_KEY</code> dans{' '}
+              <code className="bg-amber-100 px-1 rounded">backend/.env</code> pour des reponses conversationnelles.
+            </div>
+          )}
+
+          <div className="p-3 space-y-2 h-80 overflow-y-auto">
+            {messages.map((message, index) => (
+              <div
+                key={`${message.role}-${index}`}
+                className={`rounded-xl px-3 py-2 text-sm whitespace-pre-line ${
+                  message.role === 'user'
+                    ? 'bg-emerald-500 text-white ml-8'
+                    : 'bg-slate-100 text-slate-800 mr-8'
+                }`}
+              >
+                {message.content}
+              </div>
+            ))}
+            {loading && (
+              <div className="rounded-xl px-3 py-2 text-sm bg-slate-100 text-slate-600 mr-8">
+                Analyse en cours...
+              </div>
+            )}
+          </div>
+
+          <div className="px-3 pb-2 flex flex-wrap gap-2">
+            {defaultQuickPrompts.map((prompt) => (
+              <button
+                key={prompt}
+                onClick={() => sendMessage(prompt)}
+                className="text-xs rounded-full border border-slate-200 bg-white px-2.5 py-1 hover:bg-slate-50"
+              >
+                {prompt}
+              </button>
+            ))}
+          </div>
+
+          <div className="p-3 border-t border-slate-200 flex items-center gap-2">
+            <input
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              placeholder="Posez votre question..."
+              className="flex-1 rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-emerald-300"
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  sendMessage(input);
+                }
+              }}
+            />
+            <button
+              onClick={() => sendMessage(input)}
+              disabled={loading || !input.trim()}
+              className="h-10 w-10 rounded-xl bg-emerald-500 text-white grid place-items-center disabled:opacity-50"
+            >
+              <Send size={16} />
+            </button>
+          </div>
+        </div>
+      )}
+
+      <button
+        onClick={() => setOpen((value) => !value)}
+        className="h-14 w-14 rounded-full bg-gradient-to-r from-emerald-500 to-teal-500 text-white shadow-xl shadow-emerald-900/30 grid place-items-center"
+        aria-label="Open assistant chat"
+      >
+        <MessageCircle size={22} />
+      </button>
+    </div>
+  );
+};
+
+export default AiChatWidget;

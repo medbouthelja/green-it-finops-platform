@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { projectService } from '../services/projectService';
-import { Plus, Search, Filter, MoreVertical } from 'lucide-react';
+import { Plus, Search, Filter, MoreVertical, Pencil, Trash2 } from 'lucide-react';
 import { formatCurrency, formatDate, formatPercentage } from '../utils/formatters';
 import ProjectForm from '../components/ProjectForm';
 import toast from 'react-hot-toast';
+import { getProjectsData, saveProjectsData } from '../utils/projectData';
 
 const Projects = () => {
   const [projects, setProjects] = useState([]);
@@ -13,6 +14,8 @@ const Projects = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
   const [showProjectForm, setShowProjectForm] = useState(false);
+  const [editingProject, setEditingProject] = useState(null);
+  const [menuOpenId, setMenuOpenId] = useState(null);
 
   useEffect(() => {
     fetchProjects();
@@ -24,63 +27,9 @@ const Projects = () => {
 
   const fetchProjects = async () => {
     try {
-      // Simuler les données pour la démo
-      const mockProjects = [
-        {
-          id: 1,
-          name: 'Migration Cloud AWS',
-          description: 'Migration de l\'infrastructure vers AWS',
-          status: 'active',
-          methodology: 'scrum',
-          budget: 120000,
-          consumed: 78000,
-          progress: 65,
-          startDate: '2024-01-15',
-          endDate: '2024-06-30',
-          tjm: 650,
-        },
-        {
-          id: 2,
-          name: 'Refonte Application Web',
-          description: 'Refonte complète de l\'application web',
-          status: 'active',
-          methodology: 'cycle-v',
-          budget: 80000,
-          consumed: 36000,
-          progress: 45,
-          startDate: '2024-02-01',
-          endDate: '2024-08-31',
-          tjm: 600,
-        },
-        {
-          id: 3,
-          name: 'Optimisation Infrastructure',
-          description: 'Optimisation de l\'infrastructure existante',
-          status: 'active',
-          methodology: 'scrum',
-          budget: 50000,
-          consumed: 45000,
-          progress: 90,
-          startDate: '2024-01-01',
-          endDate: '2024-04-30',
-          tjm: 700,
-        },
-        {
-          id: 4,
-          name: 'Développement API REST',
-          description: 'Développement d\'une API REST complète',
-          status: 'completed',
-          methodology: 'scrum',
-          budget: 40000,
-          consumed: 38000,
-          progress: 100,
-          startDate: '2023-10-01',
-          endDate: '2024-01-31',
-          tjm: 550,
-        },
-      ];
-      setProjects(mockProjects);
-      setFilteredProjects(mockProjects);
+      const projectsData = getProjectsData();
+      setProjects(projectsData);
+      setFilteredProjects(projectsData);
     } catch (error) {
       toast.error('Erreur lors du chargement des projets');
       console.error(error);
@@ -105,6 +54,20 @@ const Projects = () => {
     }
 
     setFilteredProjects(filtered);
+  };
+
+  const handleDeleteProject = (projectId) => {
+    const target = projects.find((project) => project.id === projectId);
+    if (!target) return;
+
+    const shouldDelete = window.confirm(`Supprimer le projet "${target.name}" ?`);
+    if (!shouldDelete) return;
+
+    const updatedProjects = projects.filter((project) => project.id !== projectId);
+    setProjects(updatedProjects);
+    saveProjectsData(updatedProjects);
+    setMenuOpenId(null);
+    toast.success('Projet supprimé');
   };
 
   const getStatusColor = (status) => {
@@ -190,7 +153,7 @@ const Projects = () => {
           <Link
             key={project.id}
             to={`/projects/${project.id}`}
-            className="card hover:shadow-md transition-shadow"
+            className="card spotlight-card hover:shadow-md transition-shadow relative"
           >
             <div className="flex items-start justify-between mb-4">
               <div className="flex-1">
@@ -200,12 +163,41 @@ const Projects = () => {
               <button
                 onClick={(e) => {
                   e.preventDefault();
-                  // Menu contextuel
+                  e.stopPropagation();
+                  setMenuOpenId((current) => (current === project.id ? null : project.id));
                 }}
                 className="p-1 hover:bg-gray-100 rounded"
               >
                 <MoreVertical size={18} className="text-gray-400" />
               </button>
+              {menuOpenId === project.id && (
+                <div
+                  className="absolute right-4 top-12 z-20 w-40 rounded-xl border border-gray-200 bg-white shadow-lg p-1"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                  }}
+                >
+                  <button
+                    className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-lg"
+                    onClick={() => {
+                      setEditingProject(project);
+                      setShowProjectForm(true);
+                      setMenuOpenId(null);
+                    }}
+                  >
+                    <Pencil size={15} />
+                    Modifier
+                  </button>
+                  <button
+                    className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-600 hover:bg-red-50 rounded-lg"
+                    onClick={() => handleDeleteProject(project.id)}
+                  >
+                    <Trash2 size={15} />
+                    Supprimer
+                  </button>
+                </div>
+              )}
             </div>
 
             <div className="space-y-3">
@@ -259,16 +251,34 @@ const Projects = () => {
 
       {showProjectForm && (
         <ProjectForm
-          onClose={() => setShowProjectForm(false)}
+          project={editingProject}
+          onClose={() => {
+            setShowProjectForm(false);
+            setEditingProject(null);
+          }}
           onSave={async (data) => {
-            // Simuler la sauvegarde
-            const newProject = {
-              id: projects.length + 1,
-              ...data,
-              consumed: 0,
-              progress: 0,
-            };
-            setProjects([...projects, newProject]);
+            let updatedProjects = projects;
+
+            if (editingProject) {
+              updatedProjects = projects.map((project) =>
+                project.id === editingProject.id
+                  ? { ...project, ...data }
+                  : project
+              );
+            } else {
+              const nextId = projects.length ? Math.max(...projects.map((project) => project.id)) + 1 : 1;
+              const newProject = {
+                id: nextId,
+                ...data,
+                consumed: 0,
+                progress: 0,
+              };
+              updatedProjects = [...projects, newProject];
+            }
+
+            setProjects(updatedProjects);
+            saveProjectsData(updatedProjects);
+            setEditingProject(null);
             setShowProjectForm(false);
           }}
         />

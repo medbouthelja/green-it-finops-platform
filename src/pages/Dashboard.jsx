@@ -4,7 +4,6 @@ import { projectService } from '../services/projectService';
 import { finopsService } from '../services/finopsService';
 import { useAlertStore } from '../store/alertStore';
 import { 
-  FolderKanban, 
   DollarSign, 
   TrendingUp, 
   AlertTriangle,
@@ -13,6 +12,21 @@ import {
 } from 'lucide-react';
 import { formatCurrency, formatPercentage } from '../utils/formatters';
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import Counter from '../components/Counter';
+import { getProjectsData } from '../utils/projectData';
+
+const FolderGlyph = () => (
+  <div className="relative h-12 w-12">
+    <div className="absolute left-2 top-2 h-3 w-6 rounded-t-md bg-blue-300/90" />
+    <div className="absolute inset-x-1 bottom-1 top-4 rounded-lg border border-blue-300 bg-blue-100/90 shadow-inner" />
+    <div className="absolute inset-x-3 bottom-3 top-6 rounded-md border border-blue-400 bg-white/80" />
+  </div>
+);
+
+const shortenProjectName = (name) => {
+  if (!name) return '';
+  return name.length > 26 ? `${name.slice(0, 26)}...` : name;
+};
 
 const Dashboard = () => {
   const [stats, setStats] = useState({
@@ -21,6 +35,7 @@ const Dashboard = () => {
     totalBudget: 0,
     consumedBudget: 0,
   });
+  const [allProjects, setAllProjects] = useState([]);
   const [recentProjects, setRecentProjects] = useState([]);
   const [budgetEvolution, setBudgetEvolution] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -32,19 +47,23 @@ const Dashboard = () => {
 
   const fetchDashboardData = async () => {
     try {
-      // Simuler les données pour la démo
-      setStats({
-        totalProjects: 12,
-        activeProjects: 8,
-        totalBudget: 450000,
-        consumedBudget: 285000,
-      });
+      const projectsData = getProjectsData();
+      setAllProjects(projectsData);
+      const topProjects = [...projectsData].sort((a, b) => (b.progress || 0) - (a.progress || 0)).slice(0, 3);
 
-      setRecentProjects([
-        { id: 1, name: 'Migration Cloud AWS', progress: 65, budget: 120000, consumed: 78000, status: 'active' },
-        { id: 2, name: 'Refonte Application Web', progress: 45, budget: 80000, consumed: 36000, status: 'active' },
-        { id: 3, name: 'Optimisation Infrastructure', progress: 90, budget: 50000, consumed: 45000, status: 'active' },
-      ]);
+      setRecentProjects(topProjects);
+
+      const totalProjects = projectsData.length;
+      const activeProjects = projectsData.filter((project) => project.status === 'active').length;
+      const totalBudget = projectsData.reduce((sum, project) => sum + (project.budget || 0), 0);
+      const consumedBudget = projectsData.reduce((sum, project) => sum + (project.consumed || 0), 0);
+
+      setStats({
+        totalProjects,
+        activeProjects,
+        totalBudget,
+        consumedBudget,
+      });
 
       setBudgetEvolution([
         { month: 'Jan', budget: 120000, consumed: 95000 },
@@ -66,6 +85,8 @@ const Dashboard = () => {
     : 0;
 
   const criticalAlerts = alerts.filter(a => a.severity === 'critical' && !a.read).slice(0, 3);
+  const activeProjects = allProjects.filter((project) => project.status === 'active');
+  const activeProjectsPreview = activeProjects.slice(0, 3);
 
   if (loading) {
     return <div className="text-center py-12">Chargement...</div>;
@@ -80,11 +101,32 @@ const Dashboard = () => {
             <div>
               <p className="text-sm text-gray-600">Projets actifs</p>
               <p className="text-2xl font-bold text-gray-900 mt-1">
-                {stats.activeProjects} / {stats.totalProjects}
+                <Counter to={stats.activeProjects} duration={900} /> / <Counter to={stats.totalProjects} duration={1100} />
               </p>
             </div>
-            <div className="p-3 bg-blue-100 rounded-lg">
-              <FolderKanban className="text-blue-600" size={24} />
+            <div className="relative group">
+              <div className="p-3 bg-blue-100 rounded-lg">
+                <FolderGlyph />
+              </div>
+              <div className="pointer-events-none absolute right-full top-1/2 mr-3 -translate-y-1/2 flex flex-col items-end gap-1.5">
+                {activeProjectsPreview.map((project, index) => (
+                  <span
+                    key={project.id}
+                    className="whitespace-nowrap rounded-full border border-blue-200 bg-blue-50 px-2.5 py-1 text-xs font-medium text-blue-700 shadow-sm transition-all duration-300 opacity-0 translate-x-4 group-hover:opacity-100 group-hover:translate-x-0"
+                    style={{ transitionDelay: `${index * 70}ms` }}
+                  >
+                    {project.name}
+                  </span>
+                ))}
+                {activeProjects.length > activeProjectsPreview.length && (
+                  <span
+                    className="whitespace-nowrap rounded-full border border-gray-200 bg-white px-2.5 py-1 text-xs text-gray-600 shadow-sm transition-all duration-300 opacity-0 translate-x-4 group-hover:opacity-100 group-hover:translate-x-0"
+                    style={{ transitionDelay: `${activeProjectsPreview.length * 70}ms` }}
+                  >
+                    +{activeProjects.length - activeProjectsPreview.length} autres
+                  </span>
+                )}
+              </div>
             </div>
           </div>
         </div>
@@ -94,10 +136,14 @@ const Dashboard = () => {
             <div>
               <p className="text-sm text-gray-600">Budget consommé</p>
               <p className="text-2xl font-bold text-gray-900 mt-1">
-                {formatCurrency(stats.consumedBudget)}
+                <Counter
+                  to={stats.consumedBudget}
+                  duration={1300}
+                  formatValue={(value) => formatCurrency(value)}
+                />
               </p>
               <p className="text-sm text-gray-500 mt-1">
-                sur {formatCurrency(stats.totalBudget)}
+                sur <Counter to={stats.totalBudget} duration={1500} formatValue={(value) => formatCurrency(value)} />
               </p>
             </div>
             <div className="p-3 bg-green-100 rounded-lg">
@@ -111,7 +157,12 @@ const Dashboard = () => {
             <div>
               <p className="text-sm text-gray-600">Taux d'utilisation</p>
               <p className="text-2xl font-bold text-gray-900 mt-1">
-                {formatPercentage(budgetUsage)}
+                <Counter
+                  to={budgetUsage}
+                  duration={1200}
+                  decimals={1}
+                  formatValue={(value) => formatPercentage(value)}
+                />
               </p>
             </div>
             <div className="p-3 bg-yellow-100 rounded-lg">
@@ -140,15 +191,38 @@ const Dashboard = () => {
 
         <div className="card">
           <h3 className="text-lg font-semibold text-gray-900 mb-4">Répartition par projet</h3>
-          <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={recentProjects}>
+          <ResponsiveContainer width="100%" height={330}>
+            <BarChart
+              data={recentProjects}
+              layout="vertical"
+              margin={{ top: 8, right: 24, left: 24, bottom: 8 }}
+              barCategoryGap={16}
+            >
               <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="name" angle={-45} textAnchor="end" height={100} />
-              <YAxis />
-              <Tooltip formatter={(value) => formatCurrency(value)} />
-              <Legend />
-              <Bar dataKey="budget" fill="#22c55e" name="Budget" />
-              <Bar dataKey="consumed" fill="#ef4444" name="Consommé" />
+              <XAxis
+                type="number"
+                tick={{ fontSize: 12, fill: '#64748b' }}
+                tickFormatter={(value) => `${Math.round(value / 1000)}k`}
+              />
+              <YAxis
+                type="category"
+                dataKey="name"
+                width={165}
+                tick={{ fontSize: 12, fill: '#334155' }}
+                tickFormatter={shortenProjectName}
+              />
+              <Tooltip
+                formatter={(value) => formatCurrency(value)}
+                labelFormatter={(label) => `Projet: ${label}`}
+                contentStyle={{
+                  borderRadius: '12px',
+                  border: '1px solid #e2e8f0',
+                  boxShadow: '0 10px 30px rgba(15, 23, 42, 0.12)',
+                }}
+              />
+              <Legend wrapperStyle={{ paddingTop: 8 }} />
+              <Bar dataKey="budget" fill="#22c55e" name="Budget" radius={[0, 8, 8, 0]} />
+              <Bar dataKey="consumed" fill="#ef4444" name="Consommé" radius={[0, 8, 8, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </div>
