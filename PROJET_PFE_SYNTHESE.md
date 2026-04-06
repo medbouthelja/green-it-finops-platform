@@ -100,7 +100,7 @@
   - Gestion des rôles (`src/utils/roles.js`)
   - Routes protégées (`src/components/ProtectedRoute.jsx`)
   - Authentification JWT
-  - Rôles : ADMIN, MANAGER, PROJECT_MANAGER, TECH_LEAD, CONSULTANT
+  - Rôles : ADMIN, MANAGER, TECH_LEAD
 - **Status** : ✅ Complet
 
 ## 📊 Architecture Frontend

@@ -29,10 +29,9 @@ export const useAuthStore = create((set) => ({
         
         if (email && password) {
           // Déterminer le rôle selon l'email
-          let role = 'CONSULTANT';
+          let role = 'MANAGER';
           if (email.includes('admin')) role = 'ADMIN';
           else if (email.includes('manager')) role = 'MANAGER';
-          else if (email.includes('pm') || email.includes('project')) role = 'PROJECT_MANAGER';
           else if (email.includes('tech') || email.includes('lead')) role = 'TECH_LEAD';
           
           const mockUser = {
@@ -73,9 +72,14 @@ export const useAuthStore = create((set) => ({
         };
       }
       if (error.response?.status === 401) {
+        const invalid =
+          typeof backendMsg === 'string' &&
+          /invalid credential|email ou mot de passe|incorrect/i.test(backendMsg);
         return {
           success: false,
-          error: backendMsg || 'Email ou mot de passe incorrect.',
+          error: invalid
+            ? 'Identifiants incorrects ou compte absent en base. Mot de passe des fixtures : password. Dans le dossier backend, exécutez : php bin/console app:create-demo-users'
+            : backendMsg || 'Email ou mot de passe incorrect.',
         };
       }
 
@@ -89,6 +93,18 @@ export const useAuthStore = create((set) => ({
   logout: () => {
     authService.logout();
     set({ user: null, isAuthenticated: false });
+  },
+
+  /** Met à jour l'utilisateur en session (localStorage + state), ex. depuis la page Paramètres */
+  updateProfile: (partial) => {
+    const current = authService.getCurrentUser();
+    if (!current) {
+      return false;
+    }
+    const next = { ...current, ...partial };
+    localStorage.setItem('user', JSON.stringify(next));
+    set({ user: next });
+    return true;
   },
 }));
 

@@ -1,47 +1,49 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { DollarSign, TrendingUp, TrendingDown, AlertTriangle, Download } from 'lucide-react';
 import { formatCurrency, formatPercentage } from '../utils/formatters';
-import { BarChart, Bar, LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { exportToPDF, exportToExcel } from '../utils/export';
 import toast from 'react-hot-toast';
 import Counter from '../components/Counter';
+import { getProjectsData, buildAggregatedBudgetEvolution } from '../utils/projectData';
+import { useTranslation } from '../hooks/useTranslation';
+
+function enrichProjectForBudget(p) {
+  const budget = Number(p.budget) || 0;
+  const consumed = Number(p.consumed) || 0;
+  const forecast =
+    p.forecast != null && p.forecast !== ''
+      ? Number(p.forecast)
+      : Math.round(budget * ((Number(p.progress) || 0) / 100) || budget);
+  return { ...p, budget, consumed, forecast };
+}
 
 const Budget = () => {
+  const { t, chartMonths } = useTranslation();
+  const months6 = useMemo(() => chartMonths(6), [chartMonths]);
   const [budgetData, setBudgetData] = useState([]);
   const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetchBudgetData();
-  }, []);
+    const load = () => {
+      try {
+        const raw = getProjectsData();
+        const enriched = raw.map(enrichProjectForBudget);
+        setProjects(enriched);
+        setBudgetData(buildAggregatedBudgetEvolution(raw, months6));
+      } catch (error) {
+        toast.error(t('budget.loadError'));
+      } finally {
+        setLoading(false);
+      }
+    };
 
-  const fetchBudgetData = async () => {
-    try {
-      // Simuler les données
-      const mockProjects = [
-        { id: 1, name: 'Migration Cloud AWS', budget: 120000, consumed: 78000, forecast: 115000 },
-        { id: 2, name: 'Refonte Application Web', budget: 80000, consumed: 36000, forecast: 75000 },
-        { id: 3, name: 'Optimisation Infrastructure', budget: 50000, consumed: 45000, forecast: 48000 },
-        { id: 4, name: 'Développement API REST', budget: 40000, consumed: 38000, forecast: 38000 },
-      ];
-
-      setProjects(mockProjects);
-
-      setBudgetData([
-        { month: 'Jan', budget: 120000, consumed: 95000 },
-        { month: 'Fév', budget: 125000, consumed: 110000 },
-        { month: 'Mar', budget: 130000, consumed: 115000 },
-        { month: 'Avr', budget: 135000, consumed: 120000 },
-        { month: 'Mai', budget: 140000, consumed: 130000 },
-        { month: 'Juin', budget: 145000, consumed: 140000 },
-      ]);
-    } catch (error) {
-      toast.error('Erreur lors du chargement des données');
-    } finally {
-      setLoading(false);
-    }
-  };
+    load();
+    window.addEventListener('greenit-projects-updated', load);
+    return () => window.removeEventListener('greenit-projects-updated', load);
+  }, [months6, t]);
 
   const totalBudget = projects.reduce((sum, p) => sum + p.budget, 0);
   const totalConsumed = projects.reduce((sum, p) => sum + p.consumed, 0);
@@ -58,52 +60,51 @@ const Budget = () => {
 
   const handleExportPDF = () => {
     const columns = [
-      { key: 'name', label: 'Projet' },
-      { key: 'budget', label: 'Budget' },
-      { key: 'consumed', label: 'Consommé' },
-      { key: 'forecast', label: 'Prévision' },
+      { key: 'name', label: t('budget.colProject') },
+      { key: 'budget', label: t('budget.colBudget') },
+      { key: 'consumed', label: t('budget.colConsumed') },
+      { key: 'forecast', label: t('budget.colForecast') },
     ];
-    exportToPDF('Rapport Budget', projects, columns);
-    toast.success('Export PDF généré');
+    exportToPDF(t('budget.reportTitle'), projects, columns);
+    toast.success(t('budget.exportPdfOk'));
   };
 
   const handleExportExcel = () => {
     const columns = [
-      { key: 'name', label: 'Projet' },
-      { key: 'budget', label: 'Budget' },
-      { key: 'consumed', label: 'Consommé' },
-      { key: 'forecast', label: 'Prévision' },
+      { key: 'name', label: t('budget.colProject') },
+      { key: 'budget', label: t('budget.colBudget') },
+      { key: 'consumed', label: t('budget.colConsumed') },
+      { key: 'forecast', label: t('budget.colForecast') },
     ];
-    exportToExcel('Rapport Budget', projects, columns);
-    toast.success('Export Excel généré');
+    exportToExcel(t('budget.reportTitle'), projects, columns);
+    toast.success(t('budget.exportExcelOk'));
   };
 
   if (loading) {
-    return <div className="text-center py-12">Chargement...</div>;
+    return <div className="text-center py-12">{t('common.loading')}</div>;
   }
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold text-gray-900">Gestion Budgétaire</h1>
+        <h1 className="text-3xl font-bold text-gray-900">{t('budget.title')}</h1>
         <div className="flex gap-2">
           <button onClick={handleExportPDF} className="btn-secondary inline-flex items-center gap-2">
             <Download size={16} />
-            PDF
+            {t('budget.exportPdf')}
           </button>
           <button onClick={handleExportExcel} className="btn-secondary inline-flex items-center gap-2">
             <Download size={16} />
-            Excel
+            {t('budget.exportExcel')}
           </button>
         </div>
       </div>
 
-      {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         <div className="card">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-600">Budget total</p>
+              <p className="text-sm text-gray-600">{t('budget.totalBudget')}</p>
               <p className="text-2xl font-bold text-gray-900 mt-1">
                 <Counter to={totalBudget} duration={1200} formatValue={(value) => formatCurrency(value)} />
               </p>
@@ -117,7 +118,7 @@ const Budget = () => {
         <div className="card">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-600">Budget consommé</p>
+              <p className="text-sm text-gray-600">{t('budget.consumed')}</p>
               <p className="text-2xl font-bold text-gray-900 mt-1">
                 <Counter to={totalConsumed} duration={1300} formatValue={(value) => formatCurrency(value)} />
               </p>
@@ -139,7 +140,7 @@ const Budget = () => {
         <div className="card">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-600">Prévision finale</p>
+              <p className="text-sm text-gray-600">{t('budget.finalForecast')}</p>
               <p className="text-2xl font-bold text-gray-900 mt-1">
                 <Counter to={totalForecast} duration={1400} formatValue={(value) => formatCurrency(value)} />
               </p>
@@ -153,7 +154,7 @@ const Budget = () => {
         <div className={`card ${variance < 0 ? 'border-l-4 border-green-500' : 'border-l-4 border-red-500'}`}>
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-600">Écart prévisionnel</p>
+              <p className="text-sm text-gray-600">{t('budget.forecastVariance')}</p>
               <p className={`text-2xl font-bold mt-1 ${variance < 0 ? 'text-green-600' : 'text-red-600'}`}>
                 <Counter to={Math.abs(variance)} duration={1400} formatValue={(value) => formatCurrency(value)} />
               </p>
@@ -177,10 +178,12 @@ const Budget = () => {
         </div>
       </div>
 
-      {/* Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="card">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Évolution mensuelle</h3>
+          <div className="mb-4">
+            <h3 className="text-lg font-semibold text-gray-900">{t('budget.monthlyEvolution')}</h3>
+            <p className="text-sm text-gray-500 mt-1">{t('budget.evolutionHint')}</p>
+          </div>
           <ResponsiveContainer width="100%" height={300}>
             <LineChart data={budgetData}>
               <CartesianGrid strokeDasharray="3 3" />
@@ -188,14 +191,14 @@ const Budget = () => {
               <YAxis />
               <Tooltip formatter={(value) => formatCurrency(value)} />
               <Legend />
-              <Line type="monotone" dataKey="budget" stroke="#22c55e" strokeWidth={2} name="Budget" />
-              <Line type="monotone" dataKey="consumed" stroke="#ef4444" strokeWidth={2} name="Consommé" />
+              <Line type="monotone" dataKey="budget" stroke="#22c55e" strokeWidth={2} name={t('chart.budget')} />
+              <Line type="monotone" dataKey="consumed" stroke="#ef4444" strokeWidth={2} name={t('chart.consumed')} />
             </LineChart>
           </ResponsiveContainer>
         </div>
 
         <div className="card">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Répartition par projet</h3>
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">{t('budget.byProject')}</h3>
           <ResponsiveContainer width="100%" height={300}>
             <PieChart>
               <Pie
@@ -218,20 +221,19 @@ const Budget = () => {
         </div>
       </div>
 
-      {/* Projects Table */}
       <div className="card">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">Détail par projet</h3>
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">{t('budget.detailByProject')}</h3>
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
               <tr className="border-b border-gray-200">
-                <th className="text-left py-3 px-4 font-semibold text-gray-700">Projet</th>
-                <th className="text-right py-3 px-4 font-semibold text-gray-700">Budget</th>
-                <th className="text-right py-3 px-4 font-semibold text-gray-700">Consommé</th>
-                <th className="text-right py-3 px-4 font-semibold text-gray-700">Prévision</th>
-                <th className="text-right py-3 px-4 font-semibold text-gray-700">Écart</th>
-                <th className="text-right py-3 px-4 font-semibold text-gray-700">% Utilisé</th>
-                <th className="text-center py-3 px-4 font-semibold text-gray-700">Statut</th>
+                <th className="text-left py-3 px-4 font-semibold text-gray-700">{t('budget.colProject')}</th>
+                <th className="text-right py-3 px-4 font-semibold text-gray-700">{t('budget.colBudget')}</th>
+                <th className="text-right py-3 px-4 font-semibold text-gray-700">{t('budget.colConsumed')}</th>
+                <th className="text-right py-3 px-4 font-semibold text-gray-700">{t('budget.colForecast')}</th>
+                <th className="text-right py-3 px-4 font-semibold text-gray-700">{t('common.variance')}</th>
+                <th className="text-right py-3 px-4 font-semibold text-gray-700">{t('common.pctUsed')}</th>
+                <th className="text-center py-3 px-4 font-semibold text-gray-700">{t('common.status')}</th>
               </tr>
             </thead>
             <tbody>
@@ -259,10 +261,10 @@ const Budget = () => {
                       {isOverBudget || isHighUsage ? (
                         <span className="inline-flex items-center gap-1 text-red-600">
                           <AlertTriangle size={16} />
-                          <span className="text-xs">Alerte</span>
+                          <span className="text-xs">{t('budget.tableAlert')}</span>
                         </span>
                       ) : (
-                        <span className="text-green-600 text-xs">OK</span>
+                        <span className="text-green-600 text-xs">{t('common.ok')}</span>
                       )}
                     </td>
                   </tr>
@@ -277,4 +279,3 @@ const Budget = () => {
 };
 
 export default Budget;
-

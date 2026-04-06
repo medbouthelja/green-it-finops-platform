@@ -110,7 +110,7 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
         return $this;
     }
 
-    /** Role label for the React app (ADMIN, CONSULTANT, …) */
+    /** Role label for the React app (ADMIN, MANAGER, TECH_LEAD) */
     public function getApiRole(): string
     {
         foreach ($this->getRoles() as $role) {
@@ -119,6 +119,6 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
             }
         }
 
-        return 'CONSULTANT';
+        return 'MANAGER';
     }
 }

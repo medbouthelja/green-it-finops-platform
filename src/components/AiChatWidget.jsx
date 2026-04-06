@@ -1,25 +1,26 @@
-import { useState } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { MessageCircle, Send, Sparkles, X } from 'lucide-react';
 import { assistantService } from '../services/assistantService';
-
-const defaultQuickPrompts = [
-  'Quels projets sont les plus a risque budget ?',
-  "Donne-moi 3 actions FinOps prioritaires",
-  "Resume-moi l'etat global des projets",
-];
+import { useTranslation } from '../hooks/useTranslation';
 
 const AiChatWidget = () => {
+  const { t, locale } = useTranslation();
   const [open, setOpen] = useState(false);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [aiEnabled, setAiEnabled] = useState(null);
-  const [messages, setMessages] = useState([
-    {
-      role: 'assistant',
-      content:
-        "Bonjour. Je peux discuter avec vous de vos projets, du budget, des alertes ou du FinOps. Posez votre question librement — si une cle API (AI_API_KEY) est configuree cote serveur, j'utilise un modele de langage pour repondre comme une vraie conversation.",
-    },
-  ]);
+  const [messages, setMessages] = useState(() => [{ role: 'assistant', content: t('ai.intro') }]);
+
+  const quickPrompts = useMemo(() => [t('ai.quick1'), t('ai.quick2'), t('ai.quick3')], [t]);
+
+  useEffect(() => {
+    setMessages((prev) => {
+      if (prev.length === 1 && prev[0].role === 'assistant') {
+        return [{ role: 'assistant', content: t('ai.intro') }];
+      }
+      return prev;
+    });
+  }, [locale, t]);
 
   const sendMessage = async (text) => {
     const message = text.trim();
@@ -38,17 +39,10 @@ const AiChatWidget = () => {
       if (result.meta && typeof result.meta.aiEnabled === 'boolean') {
         setAiEnabled(result.meta.aiEnabled);
       }
-      const answer = result.answer || "Je n'ai pas pu generer une reponse.";
+      const answer = result.answer || t('ai.noAnswer');
       setMessages((prev) => [...prev, { role: 'assistant', content: answer }]);
     } catch {
-      setMessages((prev) => [
-        ...prev,
-        {
-          role: 'assistant',
-          content:
-            "Impossible de joindre l'API assistant. Verifiez que le backend Symfony tourne et que vous etes connecte (JWT).",
-        },
-      ]);
+      setMessages((prev) => [...prev, { role: 'assistant', content: t('ai.apiError') }]);
     } finally {
       setLoading(false);
     }
@@ -61,16 +55,15 @@ const AiChatWidget = () => {
           <div className="px-4 py-3 bg-gradient-to-r from-emerald-500 to-teal-500 text-white flex items-center justify-between">
             <div className="flex items-center gap-2 font-semibold">
               <Sparkles size={16} />
-              Assistant IA
+              {t('ai.title')}
             </div>
-            <button onClick={() => setOpen(false)} className="p-1 rounded hover:bg-white/20">
+            <button onClick={() => setOpen(false)} className="p-1 rounded hover:bg-white/20" aria-label={t('common.close')}>
               <X size={16} />
             </button>
           </div>
           {aiEnabled === false && (
             <div className="px-3 py-2 text-xs bg-amber-50 text-amber-900 border-b border-amber-100">
-              Modele LLM non configure : ajoutez <code className="bg-amber-100 px-1 rounded">AI_API_KEY</code> dans{' '}
-              <code className="bg-amber-100 px-1 rounded">backend/.env</code> pour des reponses conversationnelles.
+              {t('ai.llmHint')}
             </div>
           )}
 
@@ -89,13 +82,13 @@ const AiChatWidget = () => {
             ))}
             {loading && (
               <div className="rounded-xl px-3 py-2 text-sm bg-slate-100 text-slate-600 mr-8">
-                Analyse en cours...
+                {t('ai.analyzing')}
               </div>
             )}
           </div>
 
           <div className="px-3 pb-2 flex flex-wrap gap-2">
-            {defaultQuickPrompts.map((prompt) => (
+            {quickPrompts.map((prompt) => (
               <button
                 key={prompt}
                 onClick={() => sendMessage(prompt)}
@@ -110,7 +103,7 @@ const AiChatWidget = () => {
             <input
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              placeholder="Posez votre question..."
+              placeholder={t('ai.placeholderShort')}
               className="flex-1 rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-emerald-300"
               onKeyDown={(e) => {
                 if (e.key === 'Enter') {
@@ -122,6 +115,7 @@ const AiChatWidget = () => {
               onClick={() => sendMessage(input)}
               disabled={loading || !input.trim()}
               className="h-10 w-10 rounded-xl bg-emerald-500 text-white grid place-items-center disabled:opacity-50"
+              aria-label={t('ai.send')}
             >
               <Send size={16} />
             </button>
@@ -132,7 +126,7 @@ const AiChatWidget = () => {
       <button
         onClick={() => setOpen((value) => !value)}
         className="h-14 w-14 rounded-full bg-gradient-to-r from-emerald-500 to-teal-500 text-white shadow-xl shadow-emerald-900/30 grid place-items-center"
-        aria-label="Open assistant chat"
+        aria-label={t('ai.openAria')}
       >
         <MessageCircle size={22} />
       </button>

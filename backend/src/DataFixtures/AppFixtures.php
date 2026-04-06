@@ -28,6 +28,23 @@ class AppFixtures extends Fixture
         $admin->setFirstName('Admin');
         $admin->setLastName('Demo');
         $manager->persist($admin);
+
+        $managerUser = new User();
+        $managerUser->setEmail('manager@example.com');
+        $managerUser->setPassword($this->passwordHasher->hashPassword($managerUser, 'password'));
+        $managerUser->setRoles(['ROLE_MANAGER']);
+        $managerUser->setFirstName('Sophie');
+        $managerUser->setLastName('Bernard');
+        $manager->persist($managerUser);
+
+        $techLead = new User();
+        $techLead->setEmail('techlead@example.com');
+        $techLead->setPassword($this->passwordHasher->hashPassword($techLead, 'password'));
+        $techLead->setRoles(['ROLE_TECH_LEAD']);
+        $techLead->setFirstName('Alex');
+        $techLead->setLastName('Morel');
+        $manager->persist($techLead);
+
         $manager->flush();
 
         $projectsData = [

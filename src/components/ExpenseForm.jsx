@@ -1,16 +1,33 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { useTranslation } from '../hooks/useTranslation';
 
-const ExpenseForm = ({ project, onClose, onSave }) => {
-  const [formData, setFormData] = useState({
-    description: '',
-    amount: '',
-    category: 'other',
-    date: new Date().toISOString().split('T')[0],
-  });
+const defaultForm = () => ({
+  description: '',
+  amount: '',
+  category: 'other',
+  date: new Date().toISOString().split('T')[0],
+});
 
+const ExpenseForm = ({ project, expense, onClose, onSave }) => {
+  const { t } = useTranslation();
+  const [formData, setFormData] = useState(defaultForm);
   const [loading, setLoading] = useState(false);
+  const isEdit = Boolean(expense);
+
+  useEffect(() => {
+    if (expense) {
+      setFormData({
+        description: expense.description || '',
+        amount: expense.amount != null && expense.amount !== '' ? String(expense.amount) : '',
+        category: expense.category || 'other',
+        date: expense.date || new Date().toISOString().split('T')[0],
+      });
+    } else {
+      setFormData(defaultForm());
+    }
+  }, [expense, project?.id]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -18,7 +35,7 @@ const ExpenseForm = ({ project, onClose, onSave }) => {
 
     try {
       if (!formData.description || !formData.amount) {
-        toast.error('Veuillez remplir tous les champs obligatoires');
+        toast.error(t('expenseForm.required'));
         setLoading(false);
         return;
       }
@@ -28,11 +45,10 @@ const ExpenseForm = ({ project, onClose, onSave }) => {
         amount: parseFloat(formData.amount),
         projectId: project.id,
       });
-
-      toast.success('Dépense ajoutée avec succès');
-      onClose();
     } catch (error) {
-      toast.error('Erreur lors de l\'ajout de la dépense');
+      if (error?.message !== 'validation') {
+        toast.error(t('expenseForm.error'));
+      }
     } finally {
       setLoading(false);
     }
@@ -42,8 +58,11 @@ const ExpenseForm = ({ project, onClose, onSave }) => {
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-lg shadow-xl max-w-md w-full">
         <div className="border-b border-gray-200 px-6 py-4 flex items-center justify-between">
-          <h2 className="text-xl font-semibold text-gray-900">Ajouter une dépense</h2>
+          <h2 className="text-xl font-semibold text-gray-900">
+            {isEdit ? t('expenseForm.editTitle') : t('expenseForm.addTitle')}
+          </h2>
           <button
+            type="button"
             onClick={onClose}
             className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
           >
@@ -54,7 +73,7 @@ const ExpenseForm = ({ project, onClose, onSave }) => {
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Description <span className="text-red-500">*</span>
+              {t('expenseForm.description')} <span className="text-red-500">*</span>
             </label>
             <input
               type="text"
@@ -62,14 +81,14 @@ const ExpenseForm = ({ project, onClose, onSave }) => {
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
               required
               className="input-field"
-              placeholder="Ex: Licences, Infrastructure, Services..."
+              placeholder={t('expenseForm.descPh')}
             />
           </div>
 
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Montant (€) <span className="text-red-500">*</span>
+                {t('expenseForm.amount')} <span className="text-red-500">*</span>
               </label>
               <input
                 type="number"
@@ -85,25 +104,25 @@ const ExpenseForm = ({ project, onClose, onSave }) => {
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Catégorie
+                {t('expenseForm.category')}
               </label>
               <select
                 value={formData.category}
                 onChange={(e) => setFormData({ ...formData, category: e.target.value })}
                 className="input-field"
               >
-                <option value="cloud">Cloud</option>
-                <option value="licenses">Licences</option>
-                <option value="infrastructure">Infrastructure</option>
-                <option value="services">Services</option>
-                <option value="other">Autre</option>
+                <option value="cloud">{t('expenseForm.catCloud')}</option>
+                <option value="licenses">{t('expenseForm.catLicenses')}</option>
+                <option value="infrastructure">{t('expenseForm.catInfra')}</option>
+                <option value="services">{t('expenseForm.catServices')}</option>
+                <option value="other">{t('expenseForm.catOther')}</option>
               </select>
             </div>
           </div>
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Date
+              {t('expenseForm.date')}
             </label>
             <input
               type="date"
@@ -120,14 +139,10 @@ const ExpenseForm = ({ project, onClose, onSave }) => {
               className="btn-secondary"
               disabled={loading}
             >
-              Annuler
+              {t('common.cancel')}
             </button>
-            <button
-              type="submit"
-              className="btn-primary"
-              disabled={loading}
-            >
-              {loading ? 'Enregistrement...' : 'Ajouter'}
+            <button type="submit" className="btn-primary" disabled={loading}>
+              {loading ? t('common.saving') : isEdit ? t('expenseForm.save') : t('expenseForm.add')}
             </button>
           </div>
         </form>
@@ -137,4 +152,3 @@ const ExpenseForm = ({ project, onClose, onSave }) => {
 };
 
 export default ExpenseForm;
-

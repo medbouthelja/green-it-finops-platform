@@ -1,8 +1,18 @@
 import { format } from 'date-fns';
-import { fr } from 'date-fns/locale';
+import { fr, enUS } from 'date-fns/locale';
+import { useLocaleStore } from '../store/localeStore';
+
+function uiLocale() {
+  return useLocaleStore.getState().locale === 'en' ? 'en' : 'fr';
+}
+
+function dfLocale() {
+  return uiLocale() === 'en' ? enUS : fr;
+}
 
 export const formatCurrency = (amount) => {
-  return new Intl.NumberFormat('fr-FR', {
+  const loc = uiLocale() === 'en' ? 'en-US' : 'fr-FR';
+  return new Intl.NumberFormat(loc, {
     style: 'currency',
     currency: 'EUR',
   }).format(amount);
@@ -10,12 +20,12 @@ export const formatCurrency = (amount) => {
 
 export const formatDate = (date) => {
   if (!date) return '-';
-  return format(new Date(date), 'dd/MM/yyyy', { locale: fr });
+  return format(new Date(date), 'P', { locale: dfLocale() });
 };
 
 export const formatDateTime = (date) => {
   if (!date) return '-';
-  return format(new Date(date), 'dd/MM/yyyy HH:mm', { locale: fr });
+  return format(new Date(date), 'Pp', { locale: dfLocale() });
 };
 
 export const formatHours = (hours) => {

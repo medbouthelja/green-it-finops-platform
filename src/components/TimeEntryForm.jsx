@@ -1,8 +1,12 @@
 import { useState } from 'react';
 import { X } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { useTranslation } from '../hooks/useTranslation';
 
 const TimeEntryForm = ({ project, onClose, onSave }) => {
+  const { t } = useTranslation();
+  const team = Array.isArray(project?.team) ? project.team : [];
+
   const [formData, setFormData] = useState({
     date: new Date().toISOString().split('T')[0],
     hours: '',
@@ -17,8 +21,13 @@ const TimeEntryForm = ({ project, onClose, onSave }) => {
     setLoading(true);
 
     try {
+      if (team.length > 0 && !formData.user) {
+        toast.error(t('timeEntry.selectTeam'));
+        setLoading(false);
+        return;
+      }
       if (!formData.date || !formData.hours || !formData.task) {
-        toast.error('Veuillez remplir tous les champs obligatoires');
+        toast.error(t('timeEntry.required'));
         setLoading(false);
         return;
       }
@@ -29,20 +38,23 @@ const TimeEntryForm = ({ project, onClose, onSave }) => {
         projectId: project.id,
       });
 
-      toast.success('Heures ajoutées avec succès');
       onClose();
     } catch (error) {
-      toast.error('Erreur lors de l\'ajout des heures');
+      toast.error(t('timeEntry.error'));
     } finally {
       setLoading(false);
     }
   };
 
+  const estimated = formData.hours && project?.tjm
+    ? t('timeEntry.estimatedCost', { amount: String(parseFloat(formData.hours) * project.tjm) })
+    : null;
+
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-lg shadow-xl max-w-md w-full">
         <div className="border-b border-gray-200 px-6 py-4 flex items-center justify-between">
-          <h2 className="text-xl font-semibold text-gray-900">Ajouter des heures</h2>
+          <h2 className="text-xl font-semibold text-gray-900">{t('timeEntry.title')}</h2>
           <button
             onClick={onClose}
             className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
@@ -54,7 +66,7 @@ const TimeEntryForm = ({ project, onClose, onSave }) => {
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Date <span className="text-red-500">*</span>
+              {t('timeEntry.date')} <span className="text-red-500">*</span>
             </label>
             <input
               type="date"
@@ -67,20 +79,33 @@ const TimeEntryForm = ({ project, onClose, onSave }) => {
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Utilisateur
+              {t('timeEntry.user')} <span className="text-red-500">*</span>
             </label>
-            <input
-              type="text"
-              value={formData.user}
-              onChange={(e) => setFormData({ ...formData, user: e.target.value })}
-              className="input-field"
-              placeholder="Votre nom"
-            />
+            {team.length === 0 ? (
+              <p className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+                {t('timeEntry.noTeam')}
+              </p>
+            ) : (
+              <select
+                value={formData.user}
+                onChange={(e) => setFormData({ ...formData, user: e.target.value })}
+                className="input-field"
+                required
+              >
+                <option value="">{t('timeEntry.chooseMember')}</option>
+                {team.map((member) => (
+                  <option key={member.id} value={member.name}>
+                    {member.name}
+                    {member.role && member.role !== '—' ? ` (${member.role})` : ''}
+                  </option>
+                ))}
+              </select>
+            )}
           </div>
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Tâche <span className="text-red-500">*</span>
+              {t('timeEntry.task')} <span className="text-red-500">*</span>
             </label>
             <input
               type="text"
@@ -88,13 +113,13 @@ const TimeEntryForm = ({ project, onClose, onSave }) => {
               onChange={(e) => setFormData({ ...formData, task: e.target.value })}
               required
               className="input-field"
-              placeholder="Ex: Développement, Architecture, Tests..."
+              placeholder={t('timeEntry.taskPh')}
             />
           </div>
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Nombre d'heures <span className="text-red-500">*</span>
+              {t('timeEntry.hours')} <span className="text-red-500">*</span>
             </label>
             <input
               type="number"
@@ -107,11 +132,7 @@ const TimeEntryForm = ({ project, onClose, onSave }) => {
               max="24"
               step="0.5"
             />
-            {formData.hours && project?.tjm && (
-              <p className="text-sm text-gray-500 mt-1">
-                Coût estimé : {parseFloat(formData.hours) * project.tjm} €
-              </p>
-            )}
+            {estimated && <p className="text-sm text-gray-500 mt-1">{estimated}</p>}
           </div>
 
           <div className="flex justify-end gap-3 pt-4 border-t border-gray-200">
@@ -121,14 +142,14 @@ const TimeEntryForm = ({ project, onClose, onSave }) => {
               className="btn-secondary"
               disabled={loading}
             >
-              Annuler
+              {t('common.cancel')}
             </button>
             <button
               type="submit"
               className="btn-primary"
-              disabled={loading}
+              disabled={loading || team.length === 0}
             >
-              {loading ? 'Enregistrement...' : 'Ajouter'}
+              {loading ? t('common.saving') : t('common.add')}
             </button>
           </div>
         </form>
@@ -138,4 +159,3 @@ const TimeEntryForm = ({ project, onClose, onSave }) => {
 };
 
 export default TimeEntryForm;
-

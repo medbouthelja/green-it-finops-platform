@@ -1,8 +1,10 @@
 import { useState } from 'react';
 import { X } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { useTranslation } from '../hooks/useTranslation';
 
 const ProjectForm = ({ project = null, onClose, onSave }) => {
+  const { t } = useTranslation();
   const [formData, setFormData] = useState({
     name: project?.name || '',
     description: project?.description || '',
@@ -21,9 +23,8 @@ const ProjectForm = ({ project = null, onClose, onSave }) => {
     setLoading(true);
 
     try {
-      // Validation
       if (!formData.name || !formData.budget || !formData.tjm) {
-        toast.error('Veuillez remplir tous les champs obligatoires');
+        toast.error(t('projectForm.requiredFields'));
         setLoading(false);
         return;
       }
@@ -34,10 +35,10 @@ const ProjectForm = ({ project = null, onClose, onSave }) => {
         tjm: parseFloat(formData.tjm),
       });
 
-      toast.success(project ? 'Projet mis à jour' : 'Projet créé avec succès');
+      toast.success(project ? t('projectForm.updated') : t('projectForm.created'));
       onClose();
     } catch (error) {
-      toast.error('Erreur lors de la sauvegarde');
+      toast.error(t('projectForm.saveError'));
     } finally {
       setLoading(false);
     }
@@ -48,7 +49,7 @@ const ProjectForm = ({ project = null, onClose, onSave }) => {
       <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
         <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
           <h2 className="text-xl font-semibold text-gray-900">
-            {project ? 'Modifier le projet' : 'Nouveau projet'}
+            {project ? t('projectForm.editTitle') : t('projectForm.newTitle')}
           </h2>
           <button
             onClick={onClose}
@@ -61,7 +62,7 @@ const ProjectForm = ({ project = null, onClose, onSave }) => {
         <form onSubmit={handleSubmit} className="p-6 space-y-6">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Nom du projet <span className="text-red-500">*</span>
+              {t('projectForm.name')} <span className="text-red-500">*</span>
             </label>
             <input
               type="text"
@@ -69,51 +70,51 @@ const ProjectForm = ({ project = null, onClose, onSave }) => {
               onChange={(e) => setFormData({ ...formData, name: e.target.value })}
               required
               className="input-field"
-              placeholder="Ex: Migration Cloud AWS"
+              placeholder={t('projectForm.namePh')}
             />
           </div>
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Description
+              {t('projectForm.description')}
             </label>
             <textarea
               value={formData.description}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
               rows={3}
               className="input-field"
-              placeholder="Description du projet..."
+              placeholder={t('projectForm.descriptionPh')}
             />
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Statut
+                {t('projectForm.status')}
               </label>
               <select
                 value={formData.status}
                 onChange={(e) => setFormData({ ...formData, status: e.target.value })}
                 className="input-field"
               >
-                <option value="active">Actif</option>
-                <option value="completed">Terminé</option>
-                <option value="on-hold">En pause</option>
-                <option value="cancelled">Annulé</option>
+                <option value="active">{t('projects.statusActive')}</option>
+                <option value="completed">{t('projects.statusCompleted')}</option>
+                <option value="on-hold">{t('projects.statusOnHold')}</option>
+                <option value="cancelled">{t('projects.statusCancelled')}</option>
               </select>
             </div>
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Méthodologie
+                {t('projectForm.methodologyLabel')}
               </label>
               <select
                 value={formData.methodology}
                 onChange={(e) => setFormData({ ...formData, methodology: e.target.value })}
                 className="input-field"
               >
-                <option value="scrum">Scrum</option>
-                <option value="cycle-v">Cycle en V</option>
+                <option value="scrum">{t('common.scrum')}</option>
+                <option value="cycle-v">{t('common.cycleV')}</option>
               </select>
             </div>
           </div>
@@ -121,7 +122,7 @@ const ProjectForm = ({ project = null, onClose, onSave }) => {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Budget initial (€) <span className="text-red-500">*</span>
+                {t('projectForm.budgetInitial')} <span className="text-red-500">*</span>
               </label>
               <input
                 type="number"
@@ -137,7 +138,7 @@ const ProjectForm = ({ project = null, onClose, onSave }) => {
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                TJM (€) <span className="text-red-500">*</span>
+                {t('projectForm.tjm')} <span className="text-red-500">*</span>
               </label>
               <input
                 type="number"
@@ -155,7 +156,7 @@ const ProjectForm = ({ project = null, onClose, onSave }) => {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Date de début
+                {t('projectForm.startDate')}
               </label>
               <input
                 type="date"
@@ -167,7 +168,7 @@ const ProjectForm = ({ project = null, onClose, onSave }) => {
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Date de fin
+                {t('projectForm.endDate')}
               </label>
               <input
                 type="date"
@@ -185,14 +186,14 @@ const ProjectForm = ({ project = null, onClose, onSave }) => {
               className="btn-secondary"
               disabled={loading}
             >
-              Annuler
+              {t('common.cancel')}
             </button>
             <button
               type="submit"
               className="btn-primary"
               disabled={loading}
             >
-              {loading ? 'Enregistrement...' : project ? 'Modifier' : 'Créer'}
+              {loading ? t('common.saving') : project ? t('common.edit') : t('projectForm.create')}
             </button>
           </div>
         </form>
@@ -202,4 +203,3 @@ const ProjectForm = ({ project = null, onClose, onSave }) => {
 };
 
 export default ProjectForm;
-

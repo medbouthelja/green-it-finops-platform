@@ -121,10 +121,8 @@ src/
 ## 🔐 Rôles
 
 - **ADMIN** : Accès complet
-- **MANAGER** : Vision globale, budget, FinOps
-- **PROJECT_MANAGER** : Gestion des projets et budget
-- **TECH_LEAD** : Suivi technique et FinOps
-- **CONSULTANT** : Saisie des heures
+- **MANAGER** : Vision globale, budget, FinOps, simulation, gestion des projets et de l’équipe
+- **TECH_LEAD** : Dashboard, projets (consultation), suivi technique, FinOps, saisie du temps
 
 ## 🔧 Configuration
 

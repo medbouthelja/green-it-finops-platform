@@ -12,11 +12,22 @@ import FinOps from './pages/FinOps';
 import Simulation from './pages/Simulation';
 import Settings from './pages/Settings';
 import { useAuthStore } from './store/authStore';
-import { ROLES } from './utils/roles';
+import { ACCESS, getHomePath } from './utils/roles';
+import HtmlLang from './components/HtmlLang';
+
+function HomeRedirect() {
+  return <Navigate to={getHomePath()} replace />;
+}
+
+function AuthenticatedHomeGate() {
+  const { isAuthenticated } = useAuthStore();
+  if (isAuthenticated) {
+    return <Navigate to={getHomePath()} replace />;
+  }
+  return <Login />;
+}
 
 function App() {
-  const { isAuthenticated } = useAuthStore();
-
   useEffect(() => {
     const handlePointerMove = (event) => {
       const targetCard = event.target.closest('.spotlight-card');
@@ -36,9 +47,10 @@ function App() {
 
   return (
     <BrowserRouter>
+      <HtmlLang />
       <Toaster position="top-right" />
       <Routes>
-        <Route path="/login" element={isAuthenticated ? <Navigate to="/dashboard" replace /> : <Login />} />
+        <Route path="/login" element={<AuthenticatedHomeGate />} />
         <Route
           path="/"
           element={
@@ -47,14 +59,21 @@ function App() {
             </ProtectedRoute>
           }
         >
-          <Route index element={<Navigate to="/dashboard" replace />} />
-          <Route path="dashboard" element={<Dashboard />} />
+          <Route index element={<HomeRedirect />} />
+          <Route
+            path="dashboard"
+            element={
+              <ProtectedRoute requiredRoles={ACCESS.DASHBOARD}>
+                <Dashboard />
+              </ProtectedRoute>
+            }
+          />
           <Route path="projects" element={<Projects />} />
           <Route path="projects/:id" element={<ProjectDetail />} />
           <Route
             path="budget"
             element={
-              <ProtectedRoute requiredRoles={[ROLES.ADMIN, ROLES.MANAGER, ROLES.PROJECT_MANAGER]}>
+              <ProtectedRoute requiredRoles={ACCESS.BUDGET_PAGE}>
                 <Budget />
               </ProtectedRoute>
             }
@@ -62,12 +81,19 @@ function App() {
           <Route
             path="finops"
             element={
-              <ProtectedRoute requiredRoles={[ROLES.ADMIN, ROLES.MANAGER, ROLES.TECH_LEAD]}>
+              <ProtectedRoute requiredRoles={ACCESS.FINOPS_PAGE}>
                 <FinOps />
               </ProtectedRoute>
             }
           />
-          <Route path="simulation" element={<Simulation />} />
+          <Route
+            path="simulation"
+            element={
+              <ProtectedRoute requiredRoles={ACCESS.SIMULATION_PAGE}>
+                <Simulation />
+              </ProtectedRoute>
+            }
+          />
           <Route path="settings" element={<Settings />} />
         </Route>
       </Routes>

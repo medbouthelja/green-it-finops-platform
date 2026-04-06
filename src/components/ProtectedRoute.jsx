@@ -1,6 +1,6 @@
 import { Navigate } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
-import { canAccess } from '../utils/roles';
+import { canAccess, getHomePath } from '../utils/roles';
 
 const ProtectedRoute = ({ children, requiredRoles }) => {
   const { user, isAuthenticated } = useAuthStore();
@@ -10,7 +10,7 @@ const ProtectedRoute = ({ children, requiredRoles }) => {
   }
 
   if (requiredRoles && !canAccess(user, requiredRoles)) {
-    return <Navigate to="/dashboard" replace />;
+    return <Navigate to={getHomePath()} replace />;
   }
 
   return children;

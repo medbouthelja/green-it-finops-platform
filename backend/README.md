@@ -21,6 +21,12 @@ php bin/console doctrine:schema:update --force
 php bin/console doctrine:fixtures:load --no-interaction
 ```
 
+Si vous avez déjà des données et que seul **admin** fonctionne, créez ou mettez à jour les trois comptes de démo **sans effacer les projets** :
+
+```bash
+php bin/console app:create-demo-users
+```
+
 ## Lancer le serveur
 
 ```bash
@@ -35,11 +41,13 @@ symfony server:start --port=8000
 
 L’API est disponible sur `http://localhost:8000/api`.
 
-## Compte de démo (fixtures)
+## Comptes de démo (fixtures)
 
-| Email             | Mot de passe |
-|-------------------|--------------|
-| `admin@example.com` | `password`   |
+| Email | Mot de passe | Rôle (API → app) |
+|-------|--------------|------------------|
+| `admin@example.com` | `password` | ADMIN |
+| `manager@example.com` | `password` | MANAGER |
+| `techlead@example.com` | `password` | TECH_LEAD |
 
 ## Variables d’environnement
 
