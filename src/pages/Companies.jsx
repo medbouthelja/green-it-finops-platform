@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { Building2, Plus, Search, Pencil, Trash2, Filter } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { companyService } from '../services/companyService';
+import { userService } from '../services/userService';
 import { useTranslation } from '../hooks/useTranslation';
 import { getApiErrorMessage } from '../utils/apiErrorMessage';
 
@@ -24,6 +25,9 @@ export default function Companies() {
   const [editing, setEditing] = useState(null);
   const [form, setForm] = useState(emptyForm);
   const [saving, setSaving] = useState(false);
+  const [users, setUsers] = useState([]);
+  const [usersLoading, setUsersLoading] = useState(true);
+  const [assigningUserId, setAssigningUserId] = useState(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -48,6 +52,23 @@ export default function Companies() {
     const id = setTimeout(() => void load(), 300);
     return () => clearTimeout(id);
   }, [load]);
+
+  const loadUsers = useCallback(async () => {
+    setUsersLoading(true);
+    try {
+      const { data } = await userService.getAll();
+      setUsers(Array.isArray(data) ? data : []);
+    } catch {
+      toast.error('Unable to load users');
+      setUsers([]);
+    } finally {
+      setUsersLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void loadUsers();
+  }, [loadUsers]);
 
   const openCreate = () => {
     setEditing(null);
@@ -89,6 +110,7 @@ export default function Companies() {
       }
       setModalOpen(false);
       await load();
+      await loadUsers();
     } catch (err) {
       const status = err?.response?.status;
       if (status === 403) {
@@ -109,6 +131,7 @@ export default function Companies() {
       await companyService.delete(c.id);
       toast.success(t('companies.deleted'));
       await load();
+      await loadUsers();
     } catch (err) {
       if (err?.response?.status === 409) {
         toast.error(t('companies.deleteConflict'));
@@ -125,6 +148,26 @@ export default function Companies() {
   if (loading && list.length === 0) {
     return <div className="text-center py-12 text-gray-600">{t('common.loading')}</div>;
   }
+
+  const handleAssignCompany = async (userId, companyIdValue) => {
+    setAssigningUserId(userId);
+    try {
+      const normalizedCompanyId = companyIdValue === '' ? null : Number(companyIdValue);
+      const { data } = await userService.assignCompany(userId, normalizedCompanyId);
+      setUsers((prev) =>
+        prev.map((u) => (Number(u.id) === Number(userId) ? data : u))
+      );
+      toast.success('User assignment updated');
+    } catch (err) {
+      if (err?.response?.status === 403) {
+        toast.error(t('companies.saveForbidden'));
+      } else {
+        toast.error(getApiErrorMessage(err, 'Failed to assign user to company'));
+      }
+    } finally {
+      setAssigningUserId(null);
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -223,6 +266,55 @@ export default function Companies() {
         </table>
         {list.length === 0 && !loading && (
           <p className="text-center py-10 text-gray-500">{t('companies.noneFound')}</p>
+        )}
+      </div>
+
+      <div className="card overflow-x-auto">
+        <div className="mb-4">
+          <h2 className="text-xl font-semibold text-gray-900">Users assignment</h2>
+          <p className="text-sm text-gray-600 mt-1">Assign each user to an entreprise.</p>
+        </div>
+        <table className="min-w-full text-sm">
+          <thead>
+            <tr className="border-b border-gray-200 text-left text-gray-600">
+              <th className="py-3 pr-4 font-medium">User</th>
+              <th className="py-3 pr-4 font-medium">Role</th>
+              <th className="py-3 pr-4 font-medium">Entreprise</th>
+            </tr>
+          </thead>
+          <tbody>
+            {users.map((u) => (
+              <tr key={u.id} className="border-b border-gray-100 hover:bg-gray-50/80">
+                <td className="py-3 pr-4">
+                  <div className="font-medium text-gray-900">
+                    {u.firstName || u.lastName
+                      ? `${u.firstName || ''} ${u.lastName || ''}`.trim()
+                      : u.email}
+                  </div>
+                  <div className="text-xs text-gray-500">{u.email}</div>
+                </td>
+                <td className="py-3 pr-4 text-gray-700">{u.role}</td>
+                <td className="py-3 pr-4">
+                  <select
+                    className="input-field"
+                    value={u.company?.id != null ? String(u.company.id) : ''}
+                    onChange={(e) => void handleAssignCompany(Number(u.id), e.target.value)}
+                    disabled={assigningUserId === u.id}
+                  >
+                    <option value="">No entreprise</option>
+                    {list.map((c) => (
+                      <option key={c.id} value={String(c.id)}>
+                        {c.name}
+                      </option>
+                    ))}
+                  </select>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        {!usersLoading && users.length === 0 && (
+          <p className="text-center py-8 text-gray-500">No users found.</p>
         )}
       </div>
 

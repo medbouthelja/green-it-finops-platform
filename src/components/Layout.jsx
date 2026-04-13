@@ -130,6 +130,11 @@ const Layout = () => {
             <h1 className="text-2xl font-bold text-white">{t('layout.brand')}</h1>
             <p className="text-sm text-emerald-100/85 mt-1">{user?.email}</p>
             <p className="text-xs text-emerald-100/70 mt-1 capitalize">{user?.role?.toLowerCase()}</p>
+            {user?.company?.name && (
+              <p className="text-xs text-emerald-100/80 mt-1">
+                Entreprise: {user.company.name}
+              </p>
+            )}
           </div>
 
           <nav className="flex-1 p-4 space-y-3">
@@ -221,6 +226,7 @@ const Layout = () => {
                     </span>
                   )}
                 </button>
+
                 {notificationsOpen && (
                   <div className="absolute right-0 mt-2 w-96 max-w-[calc(100vw-2rem)] bg-white/90 backdrop-blur-lg rounded-xl shadow-2xl border border-white/70 z-[80]">
                     <div className="p-4 border-b border-gray-200/70 flex items-start justify-between gap-3">

@@ -8,6 +8,9 @@ import toast from 'react-hot-toast';
 import Counter from '../components/Counter';
 import { getProjectsData, buildAggregatedBudgetEvolution } from '../utils/projectData';
 import { useTranslation } from '../hooks/useTranslation';
+import { projectService } from '../services/projectService';
+
+const DEMO_MODE = import.meta.env.VITE_DEMO_MODE === 'true';
 
 function enrichProjectForBudget(p) {
   const budget = Number(p.budget) || 0;
@@ -27,9 +30,11 @@ const Budget = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const load = () => {
+    const load = async () => {
       try {
-        const raw = getProjectsData();
+        const raw = DEMO_MODE
+          ? getProjectsData()
+          : (await projectService.getAll()).data || [];
         const enriched = raw.map(enrichProjectForBudget);
         setProjects(enriched);
         setBudgetData(buildAggregatedBudgetEvolution(raw, months6));
@@ -40,9 +45,12 @@ const Budget = () => {
       }
     };
 
-    load();
-    window.addEventListener('greenit-projects-updated', load);
-    return () => window.removeEventListener('greenit-projects-updated', load);
+    void load();
+    const onProjectsUpdated = () => {
+      void load();
+    };
+    window.addEventListener('greenit-projects-updated', onProjectsUpdated);
+    return () => window.removeEventListener('greenit-projects-updated', onProjectsUpdated);
   }, [months6, t]);
 
   const totalBudget = projects.reduce((sum, p) => sum + p.budget, 0);

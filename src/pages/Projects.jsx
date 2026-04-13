@@ -14,7 +14,7 @@ import { useTranslation } from '../hooks/useTranslation';
 const DEMO_MODE = import.meta.env.VITE_DEMO_MODE === 'true';
 
 function mergeApiProjectsWithLocal(apiList, localList) {
-  const withExtras = apiList.map((p) => {
+  return apiList.map((p) => {
     const localRow = localList.find((x) => Number(x.id) === Number(p.id));
     if (!localRow) return p;
     return {
@@ -23,9 +23,6 @@ function mergeApiProjectsWithLocal(apiList, localList) {
       ...(localRow.currentSprint != null ? { currentSprint: localRow.currentSprint } : {}),
     };
   });
-  const apiIds = new Set(apiList.map((p) => Number(p.id)));
-  const orphans = localList.filter((p) => !apiIds.has(Number(p.id)));
-  return [...withExtras, ...orphans];
 }
 
 const Projects = () => {
@@ -56,7 +53,7 @@ const Projects = () => {
         setProjects(mergeApiProjectsWithLocal(apiList, localList));
       } catch {
         toast.error(t('projects.loadError'));
-        setProjects(localList);
+        setProjects([]);
       }
     } catch (error) {
       toast.error(t('projects.loadError'));
@@ -177,6 +174,12 @@ const Projects = () => {
 
   return (
     <div className="space-y-6">
+      {user?.role !== ROLES.ADMIN && !user?.company && (
+        <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-amber-800">
+          Your account is not assigned to an entreprise yet. Ask an admin to assign your entreprise.
+        </div>
+      )}
+
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <h1 className="text-3xl font-bold text-gray-900">{t('projects.title')}</h1>
         {canEditProjects && (

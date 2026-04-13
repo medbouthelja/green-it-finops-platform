@@ -1,4 +1,31 @@
+import { authService } from '../services/authService';
+
 const PROJECTS_STORAGE_KEY = 'greenit.projects';
+
+function getProjectsStorageKey() {
+  try {
+    const user = authService.getCurrentUser();
+    if (!user) return PROJECTS_STORAGE_KEY;
+
+    const role = String(user.role || '').toUpperCase();
+    if (role === 'ADMIN') {
+      return `${PROJECTS_STORAGE_KEY}.admin`;
+    }
+
+    const companyId = user?.company?.id;
+    if (companyId != null && companyId !== '') {
+      return `${PROJECTS_STORAGE_KEY}.company.${companyId}`;
+    }
+
+    if (user.id != null && user.id !== '') {
+      return `${PROJECTS_STORAGE_KEY}.user.${user.id}`;
+    }
+  } catch {
+    // Fall back to legacy global key when session is unavailable.
+  }
+
+  return PROJECTS_STORAGE_KEY;
+}
 
 const defaultProjects = [
   {
@@ -56,22 +83,24 @@ const defaultProjects = [
 ];
 
 export const getProjectsData = () => {
-  const raw = localStorage.getItem(PROJECTS_STORAGE_KEY);
+  const storageKey = getProjectsStorageKey();
+  const raw = localStorage.getItem(storageKey);
   if (!raw) {
-    localStorage.setItem(PROJECTS_STORAGE_KEY, JSON.stringify(defaultProjects));
+    localStorage.setItem(storageKey, JSON.stringify(defaultProjects));
     return defaultProjects;
   }
 
   try {
     return JSON.parse(raw);
   } catch {
-    localStorage.setItem(PROJECTS_STORAGE_KEY, JSON.stringify(defaultProjects));
+    localStorage.setItem(storageKey, JSON.stringify(defaultProjects));
     return defaultProjects;
   }
 };
 
 export const saveProjectsData = (projects) => {
-  localStorage.setItem(PROJECTS_STORAGE_KEY, JSON.stringify(projects));
+  const storageKey = getProjectsStorageKey();
+  localStorage.setItem(storageKey, JSON.stringify(projects));
   if (typeof window !== 'undefined') {
     window.dispatchEvent(new CustomEvent('greenit-projects-updated'));
   }

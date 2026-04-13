@@ -13,6 +13,9 @@ import {
   scaleCloudRow,
 } from '../utils/finopsRecommendations';
 import { finopsService } from '../services/finopsService';
+import { projectService } from '../services/projectService';
+
+const DEMO_MODE = import.meta.env.VITE_DEMO_MODE === 'true';
 
 const CLOUD_ROWS = [
   { cpu: 120, storage: 500, network: 80, cost: 2500 },
@@ -60,12 +63,23 @@ const FinOps = () => {
   const { t, chartMonths } = useTranslation();
   const [refreshKey, setRefreshKey] = useState(0);
   const [appliedIds, setAppliedIds] = useState(loadAppliedIds);
+  const [projects, setProjects] = useState([]);
 
   const months6 = useMemo(() => chartMonths(6), [chartMonths]);
 
-  // refreshKey invalide le cache quand les projets en localStorage changent (événement global)
-  // eslint-disable-next-line react-hooks/exhaustive-deps -- refreshKey force le recalcul
-  const projects = useMemo(() => getProjectsData(), [refreshKey]);
+  useEffect(() => {
+    const loadProjects = async () => {
+      try {
+        const rows = DEMO_MODE
+          ? getProjectsData()
+          : (await projectService.getAll()).data || [];
+        setProjects(Array.isArray(rows) ? rows : []);
+      } catch {
+        setProjects([]);
+      }
+    };
+    void loadProjects();
+  }, [refreshKey]);
 
   const portfolioRatio = useMemo(() => {
     const tb = projects.reduce((s, p) => s + (Number(p.budget) || 0), 0);

@@ -12,14 +12,10 @@ import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, L
 import Counter from '../components/Counter';
 import { getProjectsData, buildAggregatedBudgetEvolution } from '../utils/projectData';
 import { useTranslation } from '../hooks/useTranslation';
+import Folder from '../components/Folder';
+import { projectService } from '../services/projectService';
 
-const FolderGlyph = () => (
-  <div className="relative h-12 w-12">
-    <div className="absolute left-2 top-2 h-3 w-6 rounded-t-md bg-blue-300/90" />
-    <div className="absolute inset-x-1 bottom-1 top-4 rounded-lg border border-blue-300 bg-blue-100/90 shadow-inner" />
-    <div className="absolute inset-x-3 bottom-3 top-6 rounded-md border border-blue-400 bg-white/80" />
-  </div>
-);
+const DEMO_MODE = import.meta.env.VITE_DEMO_MODE === 'true';
 
 const shortenProjectName = (name) => {
   if (!name) return '';
@@ -42,9 +38,11 @@ const Dashboard = () => {
   const { alerts } = useAlertStore();
 
   useEffect(() => {
-    const refresh = () => {
+    const refresh = async () => {
       try {
-        const projectsData = getProjectsData();
+        const projectsData = DEMO_MODE
+          ? getProjectsData()
+          : (await projectService.getAll()).data || [];
         setAllProjects(projectsData);
         const topProjects = [...projectsData]
           .sort((a, b) => (b.progress || 0) - (a.progress || 0))
@@ -72,9 +70,12 @@ const Dashboard = () => {
       }
     };
 
-    refresh();
-    window.addEventListener('greenit-projects-updated', refresh);
-    return () => window.removeEventListener('greenit-projects-updated', refresh);
+    void refresh();
+    const onProjectsUpdated = () => {
+      void refresh();
+    };
+    window.addEventListener('greenit-projects-updated', onProjectsUpdated);
+    return () => window.removeEventListener('greenit-projects-updated', onProjectsUpdated);
   }, [months6]);
 
   const budgetUsage = stats.totalBudget > 0
@@ -83,6 +84,15 @@ const Dashboard = () => {
 
   const criticalAlerts = alerts.filter(a => a.severity === 'critical' && !a.read).slice(0, 3);
   const activeProjects = allProjects.filter((project) => project.status === 'active');
+  const folderItems = activeProjects.slice(0, 3).map((project) => (
+    <div
+      key={project.id}
+      className="h-full w-full flex items-center justify-center px-2 text-[10px] font-semibold text-slate-700 text-center leading-tight"
+      title={project.name}
+    >
+      {shortenProjectName(project.name)}
+    </div>
+  ));
 
   const projectStatusLabel = (status) => {
     switch (status) {
@@ -117,7 +127,7 @@ const Dashboard = () => {
             </div>
             <div className="relative group">
               <div className="p-3 bg-blue-100 rounded-lg">
-                <FolderGlyph />
+                <Folder color="#70A1FF" size={0.62} items={folderItems} />
               </div>
               <div className="pointer-events-none absolute right-full top-1/2 mr-3 -translate-y-1/2 flex flex-col items-end gap-1.5">
                 {activeProjectsPreview.map((project, index) => (

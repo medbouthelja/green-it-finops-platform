@@ -235,8 +235,11 @@ const ProjectDetail = () => {
           } catch {
             /* offline, 404, or unauthorized */
           }
-          if (!loaded && localRow) {
-            loaded = { ...localRow };
+          if (!loaded) {
+            setProject(null);
+            setTimeEntries([]);
+            setBudgetData([]);
+            return;
           }
         }
 
