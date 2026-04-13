@@ -4,6 +4,7 @@ namespace App\DataFixtures;
 
 use App\Entity\Alert;
 use App\Entity\CloudConsumption;
+use App\Entity\Company;
 use App\Entity\FinOpsRecommendation;
 use App\Entity\GreenMetric;
 use App\Entity\Project;
@@ -21,6 +22,22 @@ class AppFixtures extends Fixture
 
     public function load(ObjectManager $manager): void
     {
+        $acme = new Company();
+        $acme->setName('Acme Green IT');
+        $acme->setDescription('Client pilote — transformation cloud et sobriété numérique.');
+        $acme->setSector('Technology');
+        $acme->setCountry('France');
+        $manager->persist($acme);
+
+        $globex = new Company();
+        $globex->setName('Globex Industries');
+        $globex->setDescription('Groupe industriel — projets FinOps multi-sites.');
+        $globex->setSector('Manufacturing');
+        $globex->setCountry('Belgium');
+        $manager->persist($globex);
+
+        $manager->flush();
+
         $admin = new User();
         $admin->setEmail('admin@example.com');
         $admin->setPassword($this->passwordHasher->hashPassword($admin, 'password'));
@@ -35,6 +52,7 @@ class AppFixtures extends Fixture
         $managerUser->setRoles(['ROLE_MANAGER']);
         $managerUser->setFirstName('Sophie');
         $managerUser->setLastName('Bernard');
+        $managerUser->setCompany($acme);
         $manager->persist($managerUser);
 
         $techLead = new User();
@@ -43,6 +61,7 @@ class AppFixtures extends Fixture
         $techLead->setRoles(['ROLE_TECH_LEAD']);
         $techLead->setFirstName('Alex');
         $techLead->setLastName('Morel');
+        $techLead->setCompany($acme);
         $manager->persist($techLead);
 
         $manager->flush();
@@ -90,6 +109,7 @@ class AppFixtures extends Fixture
                 'start' => '2024-01-01',
                 'end' => '2024-04-30',
                 'team' => [],
+                'company' => $globex,
             ],
         ];
 
@@ -107,6 +127,7 @@ class AppFixtures extends Fixture
             $p->setEndDate(new \DateTimeImmutable($row['end']));
             $p->setTeam($row['team']);
             $p->setOwner($admin);
+            $p->setCompany($row['company'] ?? $acme);
             $manager->persist($p);
             $manager->flush();
 

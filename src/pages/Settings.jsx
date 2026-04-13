@@ -185,6 +185,17 @@ const Settings = () => {
                       className="input-field bg-gray-50"
                     />
                   </div>
+                  {user?.company?.name && (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">{t('settings.company')}</label>
+                      <input
+                        type="text"
+                        value={user.company.name}
+                        disabled
+                        className="input-field bg-gray-50"
+                      />
+                    </div>
+                  )}
                 </div>
                 <button type="button" onClick={handleSaveProfile} className="btn-primary">
                   {t('settings.saveProfile')}

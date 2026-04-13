@@ -40,6 +40,10 @@ export const useAuthStore = create((set) => ({
             firstName: 'John',
             lastName: 'Doe',
             role: role,
+            company:
+              role === 'ADMIN'
+                ? null
+                : { id: 1, name: 'Demo Corp' },
           };
           
           const mockToken = 'mock-jwt-token-' + Date.now();

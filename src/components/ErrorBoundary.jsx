@@ -33,7 +33,7 @@ class ErrorBoundary extends React.Component {
               Retour à la page de connexion
             </button>
             <details className="mt-4">
-              <summary className="cursor-pointer text-sm text-gray-500">Détails de l'erreur</summary>
+              <summary className="cursor-pointer text-sm text-gray-500">Détails de l’erreur</summary>
               <pre className="mt-2 text-xs bg-gray-100 p-2 rounded overflow-auto">
                 {this.state.error?.stack}
               </pre>

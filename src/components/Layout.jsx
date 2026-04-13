@@ -11,10 +11,11 @@ import {
   LogOut,
   Menu,
   X,
-  Calculator
+  Calculator,
+  Building2
 } from 'lucide-react';
 import { useEffect, useState, useMemo } from 'react';
-import { ACCESS, canAccess } from '../utils/roles';
+import { ACCESS, ROLES, canAccess } from '../utils/roles';
 import AuroraBackground from './AuroraBackground';
 import AiChatWidget from './AiChatWidget';
 import { useTranslation } from '../hooks/useTranslation';
@@ -66,6 +67,14 @@ const Layout = () => {
           access: ACCESS.DASHBOARD,
         },
         {
+          path: '/companies',
+          icon: Building2,
+          label: t('layout.menu.companies'),
+          description: t('layout.menu.companiesDesc'),
+          access: ACCESS.DASHBOARD,
+          adminOnly: true,
+        },
+        {
           path: '/budget',
           icon: DollarSign,
           label: t('layout.menu.budget'),
@@ -86,7 +95,12 @@ const Layout = () => {
           description: t('layout.menu.simulationDesc'),
           access: ACCESS.SIMULATION_PAGE,
         },
-      ].filter((item) => canAccess(user, item.access)),
+      ].filter((item) => {
+        if (item.adminOnly) {
+          return user?.role === ROLES.ADMIN;
+        }
+        return canAccess(user, item.access);
+      }),
     [t, user]
   );
 

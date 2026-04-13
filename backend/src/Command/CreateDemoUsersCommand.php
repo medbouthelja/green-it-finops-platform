@@ -2,6 +2,7 @@
 
 namespace App\Command;
 
+use App\Entity\Company;
 use App\Entity\User;
 use App\Repository\UserRepository;
 use Doctrine\ORM\EntityManagerInterface;
@@ -33,6 +34,8 @@ class CreateDemoUsersCommand extends Command
             ['techlead@example.com', ['ROLE_TECH_LEAD'], 'Alex', 'Morel'],
         ];
 
+        $defaultCompany = $this->em->getRepository(Company::class)->findOneBy([], ['id' => 'ASC']);
+
         foreach ($accounts as [$email, $roles, $firstName, $lastName]) {
             $user = $this->users->findOneBy(['email' => $email]);
             if (!$user instanceof User) {
@@ -43,6 +46,11 @@ class CreateDemoUsersCommand extends Command
             $user->setFirstName($firstName);
             $user->setLastName($lastName);
             $user->setPassword($this->passwordHasher->hashPassword($user, 'password'));
+            if (\in_array('ROLE_ADMIN', $roles, true)) {
+                $user->setCompany(null);
+            } elseif ($defaultCompany instanceof Company) {
+                $user->setCompany($defaultCompany);
+            }
             $this->em->persist($user);
         }
 

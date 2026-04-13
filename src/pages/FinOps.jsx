@@ -63,6 +63,8 @@ const FinOps = () => {
 
   const months6 = useMemo(() => chartMonths(6), [chartMonths]);
 
+  // refreshKey invalide le cache quand les projets en localStorage changent (événement global)
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- refreshKey force le recalcul
   const projects = useMemo(() => getProjectsData(), [refreshKey]);
 
   const portfolioRatio = useMemo(() => {

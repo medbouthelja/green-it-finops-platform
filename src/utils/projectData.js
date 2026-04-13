@@ -113,7 +113,8 @@ export function buildAggregatedBudgetEvolution(projects, monthLabels) {
 export function upsertProjectInStorage(project) {
   if (project == null || project.id == null) return;
   const all = getProjectsData();
-  const idx = all.findIndex((p) => p.id === project.id);
+  const pid = Number(project.id);
+  const idx = all.findIndex((p) => Number(p.id) === pid);
   const row = { ...project };
   const next =
     idx >= 0 ? all.map((p, i) => (i === idx ? { ...p, ...row } : p)) : [...all, row];

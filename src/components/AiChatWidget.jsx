@@ -1,7 +1,18 @@
 import { useState, useEffect, useMemo } from 'react';
-import { MessageCircle, Send, Sparkles, X } from 'lucide-react';
+import { MessageCircle, Send, Sparkles, X, Languages } from 'lucide-react';
 import { assistantService } from '../services/assistantService';
 import { useTranslation } from '../hooks/useTranslation';
+import { ASSISTANT_REPLY_LANGUAGES, AI_CHAT_LANGUAGE_KEY } from '../constants/assistantLanguages';
+
+function readStoredReplyLanguage() {
+  try {
+    const raw = localStorage.getItem(AI_CHAT_LANGUAGE_KEY);
+    if (raw && ASSISTANT_REPLY_LANGUAGES.some((x) => x.code === raw)) return raw;
+  } catch {
+    /* ignore */
+  }
+  return 'auto';
+}
 
 const AiChatWidget = () => {
   const { t, locale } = useTranslation();
@@ -9,7 +20,16 @@ const AiChatWidget = () => {
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [aiEnabled, setAiEnabled] = useState(null);
+  const [replyLanguage, setReplyLanguage] = useState(readStoredReplyLanguage);
   const [messages, setMessages] = useState(() => [{ role: 'assistant', content: t('ai.intro') }]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(AI_CHAT_LANGUAGE_KEY, replyLanguage);
+    } catch {
+      /* ignore */
+    }
+  }, [replyLanguage]);
 
   const quickPrompts = useMemo(() => [t('ai.quick1'), t('ai.quick2'), t('ai.quick3')], [t]);
 
@@ -35,11 +55,14 @@ const AiChatWidget = () => {
     setLoading(true);
 
     try {
-      const result = await assistantService.chat(message, historyPayload);
+      const result = await assistantService.chat(message, historyPayload, { language: replyLanguage });
       if (result.meta && typeof result.meta.aiEnabled === 'boolean') {
         setAiEnabled(result.meta.aiEnabled);
       }
-      const answer = result.answer || t('ai.noAnswer');
+      let answer = result.answer || t('ai.noAnswer');
+      if (import.meta.env.DEV && result.meta?.aiLlmError) {
+        answer += `\n\n— debug —\n${String(result.meta.aiLlmError).slice(0, 1200)}`;
+      }
       setMessages((prev) => [...prev, { role: 'assistant', content: answer }]);
     } catch {
       setMessages((prev) => [...prev, { role: 'assistant', content: t('ai.apiError') }]);
@@ -66,6 +89,26 @@ const AiChatWidget = () => {
               {t('ai.llmHint')}
             </div>
           )}
+
+          <div className="px-3 py-2 border-b border-slate-100 flex items-center gap-2 bg-slate-50/80">
+            <Languages size={16} className="text-slate-500 shrink-0" aria-hidden />
+            <label className="sr-only" htmlFor="ai-reply-language">
+              {t('ai.replyLanguage')}
+            </label>
+            <select
+              id="ai-reply-language"
+              value={replyLanguage}
+              onChange={(e) => setReplyLanguage(e.target.value)}
+              disabled={loading}
+              className="flex-1 min-w-0 text-xs rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-slate-800 outline-none focus:ring-2 focus:ring-emerald-300"
+            >
+              {ASSISTANT_REPLY_LANGUAGES.map(({ code, label }) => (
+                <option key={code} value={code}>
+                  {code === 'auto' ? t('ai.langAuto') : label}
+                </option>
+              ))}
+            </select>
+          </div>
 
           <div className="p-3 space-y-2 h-80 overflow-y-auto">
             {messages.map((message, index) => (

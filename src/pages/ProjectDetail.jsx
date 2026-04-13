@@ -213,14 +213,30 @@ const ProjectDetail = () => {
       setLoading(true);
       try {
         const localList = getProjectsData();
-        let loaded = localList.find((p) => p.id === numericId) ?? null;
+        const localRow = localList.find((p) => Number(p.id) === numericId) ?? null;
 
-        if (!loaded && !DEMO_MODE) {
+        let loaded = null;
+        if (DEMO_MODE) {
+          loaded = localRow;
+        } else {
           try {
             const { data } = await projectService.getById(numericId);
-            if (!cancelled) loaded = data;
+            if (!cancelled && data) {
+              loaded = {
+                ...data,
+                ...(localRow
+                  ? {
+                      expenses: localRow.expenses,
+                      currentSprint: localRow.currentSprint,
+                    }
+                  : {}),
+              };
+            }
           } catch {
-            if (!cancelled) loaded = null;
+            /* offline, 404, or unauthorized */
+          }
+          if (!loaded && localRow) {
+            loaded = { ...localRow };
           }
         }
 
@@ -281,11 +297,13 @@ const ProjectDetail = () => {
     };
   }, [id, t, buildBudgetChartDataCb]);
 
+  // Dépendances volontairement ciblées : l’objet `project` entier change souvent de référence.
   useEffect(() => {
     if (!project) return;
     setBudgetData(
       buildBudgetChartSeries(Number(project.budget) || 0, Number(project.consumed) || 0, monthLabels5)
     );
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [monthLabels5, project?.id, project?.budget, project?.consumed]);
 
   useEffect(() => {
@@ -295,6 +313,7 @@ const ProjectDetail = () => {
         project.currentSprint ?? defaultCurrentSprintFromProgress(project.progress),
       progressPct: Math.max(0, Math.min(100, Number(project.progress) || 0)),
     });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [project?.id, project?.currentSprint, project?.progress]);
 
   const handleSaveProgressTracking = useCallback(async () => {
@@ -316,10 +335,14 @@ const ProjectDetail = () => {
 
     if (!DEMO_MODE) {
       try {
-        await projectService.update(project.id, { progress: prog });
+        await projectService.update(Number(project.id), { progress: prog });
         toast.success(t('projectDetail.toastProgressSaved'));
-      } catch {
-        toast.error(t('projectDetail.toastProgressLocal'));
+      } catch (e) {
+        if (e?.response?.status === 404) {
+          toast.error(t('projectDetail.toastProgressNotOnServer'));
+        } else {
+          toast.error(t('projectDetail.toastProgressLocal'));
+        }
       }
     } else {
       toast.success(t('projectDetail.toastProgressSaved'));
@@ -397,7 +420,7 @@ const ProjectDetail = () => {
     if (savedToApi || DEMO_MODE) {
       toast.success(t('projectDetail.timeSaved'));
     }
-  }, [project, t]);
+  }, [project, t, buildBudgetChartDataCb]);
 
   const handleSaveExpense = useCallback(
     async (data) => {
@@ -452,7 +475,7 @@ const ProjectDetail = () => {
         toast.success(editingExpense ? t('projectDetail.expenseUpdated') : t('projectDetail.expenseAdded'));
       }
     },
-    [project, editingExpense, t]
+    [project, editingExpense, t, buildBudgetChartDataCb]
   );
 
   const handleDeleteExpense = useCallback(
@@ -480,7 +503,7 @@ const ProjectDetail = () => {
         toast.success(t('projectDetail.expenseDeleted'));
       }
     },
-    [project, t]
+    [project, t, buildBudgetChartDataCb]
   );
 
   const openAddExpense = () => {
@@ -527,7 +550,7 @@ const ProjectDetail = () => {
         setTeamSaving(false);
       }
     },
-    [project, t]
+    [project, t, buildBudgetChartDataCb]
   );
 
   const openAddTeamMember = () => {
@@ -589,6 +612,11 @@ const ProjectDetail = () => {
         <div className="flex-1">
           <h1 className="text-3xl font-bold text-gray-900">{project.name}</h1>
           <p className="text-gray-600 mt-1">{project.description}</p>
+          {project.company?.name && (
+            <p className="text-sm text-gray-500 mt-2">
+              {t('projects.companyLabel')}: <span className="font-medium text-gray-700">{project.company.name}</span>
+            </p>
+          )}
         </div>
       </div>
 

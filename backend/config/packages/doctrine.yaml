@@ -1,6 +1,7 @@
+# Connexion : DATABASE_URL (PostgreSQL en prod ; .env.local peut utiliser sqlite:// pour le dev sans Docker).
 doctrine:
     dbal:
-        url: 'sqlite:///%kernel.project_dir%/var/data.db'
+        url: '%env(resolve:DATABASE_URL)%'
     orm:
         auto_mapping: true
         mappings:

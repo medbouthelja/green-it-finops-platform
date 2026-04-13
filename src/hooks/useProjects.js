@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react';
-import { projectService } from '../services/projectService';
 import toast from 'react-hot-toast';
 
 export const useProjects = () => {
@@ -67,7 +66,7 @@ export const useProjects = () => {
     }
   };
 
-  const createProject = async (projectData) => {
+  const createProject = async (_projectData) => {
     try {
       // const response = await projectService.create(projectData);
       // setProjects([...projects, response.data]);
@@ -79,7 +78,7 @@ export const useProjects = () => {
     }
   };
 
-  const updateProject = async (id, projectData) => {
+  const updateProject = async (_id, _projectData) => {
     try {
       // await projectService.update(id, projectData);
       toast.success('Projet mis à jour');

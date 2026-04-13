@@ -3,8 +3,10 @@
 namespace App\Controller;
 
 use App\Entity\Alert;
+use App\Entity\User;
 use App\Repository\AlertRepository;
 use App\Repository\ProjectRepository;
+use App\Service\ProjectAccessService;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -19,21 +21,35 @@ class AlertController extends AbstractController
         private readonly EntityManagerInterface $em,
         private readonly AlertRepository $alerts,
         private readonly ProjectRepository $projects,
+        private readonly ProjectAccessService $projectAccess,
     ) {
     }
 
     #[Route('', name: 'api_alerts_list', methods: ['GET'])]
     public function list(Request $request): JsonResponse
     {
+        $user = $this->getUser();
+        if (!$user instanceof User) {
+            return new JsonResponse(['message' => 'Unauthorized'], Response::HTTP_UNAUTHORIZED);
+        }
+
         $projectId = $request->query->get('projectId');
         if ($projectId !== null && $projectId !== '') {
             $project = $this->projects->find((int) $projectId);
-            if (!$project) {
+            if (!$project || !$this->projectAccess->canAccess($user, $project)) {
                 return new JsonResponse([]);
             }
             $rows = $this->alerts->findBy(['project' => $project], ['createdAt' => 'DESC']);
         } else {
-            $rows = $this->alerts->findBy([], ['createdAt' => 'DESC']);
+            $allRows = $this->alerts->findBy([], ['createdAt' => 'DESC']);
+            $rows = array_values(array_filter(
+                $allRows,
+                function (Alert $a) use ($user): bool {
+                    $p = $a->getProject();
+
+                    return $p !== null && $this->projectAccess->canAccess($user, $p);
+                }
+            ));
         }
 
         $out = array_map(fn (Alert $a) => $this->serializeAlert($a), $rows);
@@ -44,8 +60,14 @@ class AlertController extends AbstractController
     #[Route('/read-all', name: 'api_alerts_read_all', methods: ['PUT'])]
     public function markAllRead(): JsonResponse
     {
+        $user = $this->getUser();
+        if (!$user instanceof User) {
+            return new JsonResponse(['message' => 'Unauthorized'], Response::HTTP_UNAUTHORIZED);
+        }
+
         foreach ($this->alerts->findAll() as $alert) {
-            if (!$alert->isRead()) {
+            $p = $alert->getProject();
+            if ($p !== null && $this->projectAccess->canAccess($user, $p) && !$alert->isRead()) {
                 $alert->setRead(true);
             }
         }
@@ -57,8 +79,18 @@ class AlertController extends AbstractController
     #[Route('/{id}/read', name: 'api_alerts_read', methods: ['PUT'], requirements: ['id' => '\d+'])]
     public function markRead(int $id): JsonResponse
     {
+        $user = $this->getUser();
+        if (!$user instanceof User) {
+            return new JsonResponse(['message' => 'Unauthorized'], Response::HTTP_UNAUTHORIZED);
+        }
+
         $alert = $this->alerts->find($id);
         if (!$alert) {
+            return new JsonResponse(['message' => 'Not found'], Response::HTTP_NOT_FOUND);
+        }
+
+        $p = $alert->getProject();
+        if (null === $p || !$this->projectAccess->canAccess($user, $p)) {
             return new JsonResponse(['message' => 'Not found'], Response::HTTP_NOT_FOUND);
         }
 

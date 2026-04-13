@@ -2,10 +2,13 @@
 
 namespace App\Controller;
 
+use App\Entity\Project;
+use App\Entity\User;
 use App\Repository\CloudConsumptionRepository;
 use App\Repository\FinOpsRecommendationRepository;
 use App\Repository\GreenMetricRepository;
 use App\Repository\ProjectRepository;
+use App\Service\ProjectAccessService;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Response;
@@ -19,17 +22,18 @@ class FinOpsController extends AbstractController
         private readonly CloudConsumptionRepository $consumptions,
         private readonly FinOpsRecommendationRepository $recommendations,
         private readonly GreenMetricRepository $greenMetrics,
+        private readonly ProjectAccessService $projectAccess,
     ) {
     }
 
     #[Route('/{projectId}/consumption', name: 'api_finops_consumption', methods: ['GET'])]
     public function consumption(int $projectId): JsonResponse
     {
-        if (!$this->projects->find($projectId)) {
-            return new JsonResponse(['message' => 'Not found'], Response::HTTP_NOT_FOUND);
+        $project = $this->resolveProjectOrNotFound($projectId);
+        if ($project instanceof JsonResponse) {
+            return $project;
         }
 
-        $project = $this->projects->find($projectId);
         $rows = $this->consumptions->findBy(['project' => $project]);
         $out = [];
         foreach ($rows as $c) {
@@ -48,11 +52,11 @@ class FinOpsController extends AbstractController
     #[Route('/{projectId}/costs', name: 'api_finops_costs', methods: ['GET'])]
     public function costs(int $projectId): JsonResponse
     {
-        if (!$this->projects->find($projectId)) {
-            return new JsonResponse(['message' => 'Not found'], Response::HTTP_NOT_FOUND);
+        $project = $this->resolveProjectOrNotFound($projectId);
+        if ($project instanceof JsonResponse) {
+            return $project;
         }
 
-        $project = $this->projects->find($projectId);
         $rows = $this->consumptions->findBy(['project' => $project]);
         $total = 0.0;
         foreach ($rows as $c) {
@@ -68,9 +72,9 @@ class FinOpsController extends AbstractController
     #[Route('/{projectId}/recommendations', name: 'api_finops_recommendations', methods: ['GET'])]
     public function recommendations(int $projectId): JsonResponse
     {
-        $project = $this->projects->find($projectId);
-        if (!$project) {
-            return new JsonResponse(['message' => 'Not found'], Response::HTTP_NOT_FOUND);
+        $project = $this->resolveProjectOrNotFound($projectId);
+        if ($project instanceof JsonResponse) {
+            return $project;
         }
 
         $rows = $this->recommendations->findBy(['project' => $project]);
@@ -92,9 +96,9 @@ class FinOpsController extends AbstractController
     #[Route('/{projectId}/green-metrics', name: 'api_finops_green', methods: ['GET'])]
     public function greenMetrics(int $projectId): JsonResponse
     {
-        $project = $this->projects->find($projectId);
-        if (!$project) {
-            return new JsonResponse(['message' => 'Not found'], Response::HTTP_NOT_FOUND);
+        $project = $this->resolveProjectOrNotFound($projectId);
+        if ($project instanceof JsonResponse) {
+            return $project;
         }
 
         $gm = $this->greenMetrics->findOneBy(['project' => $project]);
@@ -109,5 +113,19 @@ class FinOpsController extends AbstractController
             'energyEfficiency' => $gm->getEnergyEfficiency(),
             'renewableEnergy' => $gm->getRenewableEnergy(),
         ]);
+    }
+
+    private function resolveProjectOrNotFound(int $projectId): Project|JsonResponse
+    {
+        $project = $this->projects->find($projectId);
+        if (!$project) {
+            return new JsonResponse(['message' => 'Not found'], Response::HTTP_NOT_FOUND);
+        }
+        $user = $this->getUser();
+        if (!$user instanceof User || !$this->projectAccess->canAccess($user, $project)) {
+            return new JsonResponse(['message' => 'Not found'], Response::HTTP_NOT_FOUND);
+        }
+
+        return $project;
     }
 }

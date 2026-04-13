@@ -2,7 +2,9 @@
 
 namespace App\Controller;
 
+use App\Entity\User;
 use App\Repository\ProjectRepository;
+use App\Service\ProjectAccessService;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -14,6 +16,7 @@ class SimulationController extends AbstractController
 {
     public function __construct(
         private readonly ProjectRepository $projects,
+        private readonly ProjectAccessService $projectAccess,
     ) {
     }
 
@@ -22,6 +25,10 @@ class SimulationController extends AbstractController
     {
         $project = $this->projects->find($projectId);
         if (!$project) {
+            return new JsonResponse(['message' => 'Not found'], Response::HTTP_NOT_FOUND);
+        }
+        $user = $this->getUser();
+        if (!$user instanceof User || !$this->projectAccess->canAccess($user, $project)) {
             return new JsonResponse(['message' => 'Not found'], Response::HTTP_NOT_FOUND);
         }
 

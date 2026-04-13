@@ -50,6 +50,8 @@ class AuthController extends AbstractController
         ];
         $token = JWT::encode($payload, $this->jwtSecret, 'HS256');
 
+        $company = $user->getCompany();
+
         return new JsonResponse([
             'token' => $token,
             'user' => [
@@ -58,6 +60,10 @@ class AuthController extends AbstractController
                 'firstName' => $user->getFirstName(),
                 'lastName' => $user->getLastName(),
                 'role' => $user->getApiRole(),
+                'company' => $company ? [
+                    'id' => $company->getId(),
+                    'name' => $company->getName(),
+                ] : null,
             ],
         ]);
     }

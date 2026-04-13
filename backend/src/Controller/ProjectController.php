@@ -4,8 +4,11 @@ namespace App\Controller;
 
 use App\Entity\Project;
 use App\Entity\TimeEntry;
+use App\Entity\User;
+use App\Repository\CompanyRepository;
 use App\Repository\ProjectRepository;
 use App\Repository\TimeEntryRepository;
+use App\Service\ProjectAccessService;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -20,13 +23,20 @@ class ProjectController extends AbstractController
         private readonly EntityManagerInterface $em,
         private readonly ProjectRepository $projects,
         private readonly TimeEntryRepository $timeEntries,
+        private readonly CompanyRepository $companies,
+        private readonly ProjectAccessService $projectAccess,
     ) {
     }
 
     #[Route('', name: 'api_projects_list', methods: ['GET'])]
     public function list(): JsonResponse
     {
-        $list = $this->projects->findAll();
+        $user = $this->getUser();
+        if (!$user instanceof User) {
+            return new JsonResponse(['message' => 'Unauthorized'], Response::HTTP_UNAUTHORIZED);
+        }
+
+        $list = $this->projects->findForUser($user);
 
         return new JsonResponse(array_map(fn (Project $p) => $this->serializeProject($p), $list));
     }
@@ -34,9 +44,9 @@ class ProjectController extends AbstractController
     #[Route('/{id}', name: 'api_projects_get', methods: ['GET'], requirements: ['id' => '\d+'])]
     public function get(int $id): JsonResponse
     {
-        $project = $this->projects->find($id);
-        if (!$project) {
-            return new JsonResponse(['message' => 'Not found'], Response::HTTP_NOT_FOUND);
+        $project = $this->resolveProjectOrNotFound($id);
+        if ($project instanceof JsonResponse) {
+            return $project;
         }
 
         return new JsonResponse($this->serializeProject($project));
@@ -50,11 +60,29 @@ class ProjectController extends AbstractController
             return new JsonResponse(['message' => 'Invalid JSON'], Response::HTTP_BAD_REQUEST);
         }
 
-        $project = $this->hydrateProject(new Project(), $data, true);
         $user = $this->getUser();
-        if ($user instanceof \App\Entity\User) {
-            $project->setOwner($user);
+        if (!$user instanceof User) {
+            return new JsonResponse(['message' => 'Unauthorized'], Response::HTTP_UNAUTHORIZED);
         }
+
+        $project = $this->hydrateProject(new Project(), $data, true);
+        $project->setOwner($user);
+
+        if ($this->isGranted('ROLE_ADMIN')) {
+            $cid = isset($data['companyId']) ? (int) $data['companyId'] : 0;
+            $company = $cid > 0 ? $this->companies->find($cid) : null;
+            if (null === $company) {
+                return new JsonResponse(['message' => 'companyId is required and must reference an existing company'], Response::HTTP_BAD_REQUEST);
+            }
+            $project->setCompany($company);
+        } else {
+            $company = $user->getCompany();
+            if (null === $company) {
+                return new JsonResponse(['message' => 'Your account is not assigned to a company'], Response::HTTP_BAD_REQUEST);
+            }
+            $project->setCompany($company);
+        }
+
         $this->em->persist($project);
         $this->em->flush();
 
@@ -64,9 +92,9 @@ class ProjectController extends AbstractController
     #[Route('/{id}', name: 'api_projects_update', methods: ['PUT'])]
     public function update(int $id, Request $request): JsonResponse
     {
-        $project = $this->projects->find($id);
-        if (!$project) {
-            return new JsonResponse(['message' => 'Not found'], Response::HTTP_NOT_FOUND);
+        $project = $this->resolveProjectOrNotFound($id);
+        if ($project instanceof JsonResponse) {
+            return $project;
         }
 
         $data = json_decode($request->getContent(), true);
@@ -75,6 +103,13 @@ class ProjectController extends AbstractController
         }
 
         $this->hydrateProject($project, $data, false);
+        if ($this->isGranted('ROLE_ADMIN') && isset($data['companyId'])) {
+            $cid = (int) $data['companyId'];
+            $co = $cid > 0 ? $this->companies->find($cid) : null;
+            if ($co) {
+                $project->setCompany($co);
+            }
+        }
         $this->em->flush();
 
         return new JsonResponse($this->serializeProject($project));
@@ -83,9 +118,9 @@ class ProjectController extends AbstractController
     #[Route('/{id}', name: 'api_projects_delete', methods: ['DELETE'])]
     public function delete(int $id): Response
     {
-        $project = $this->projects->find($id);
-        if (!$project) {
-            return new JsonResponse(['message' => 'Not found'], Response::HTTP_NOT_FOUND);
+        $project = $this->resolveProjectOrNotFound($id);
+        if ($project instanceof JsonResponse) {
+            return $project;
         }
 
         $this->em->remove($project);
@@ -97,9 +132,9 @@ class ProjectController extends AbstractController
     #[Route('/{id}/budget', name: 'api_projects_budget', methods: ['GET'])]
     public function budget(int $id): JsonResponse
     {
-        $project = $this->projects->find($id);
-        if (!$project) {
-            return new JsonResponse(['message' => 'Not found'], Response::HTTP_NOT_FOUND);
+        $project = $this->resolveProjectOrNotFound($id);
+        if ($project instanceof JsonResponse) {
+            return $project;
         }
 
         $months = ['Jan', 'Fév', 'Mar', 'Avr', 'Mai'];
@@ -125,9 +160,9 @@ class ProjectController extends AbstractController
     #[Route('/{id}/progress', name: 'api_projects_progress', methods: ['GET'])]
     public function progress(int $id): JsonResponse
     {
-        $project = $this->projects->find($id);
-        if (!$project) {
-            return new JsonResponse(['message' => 'Not found'], Response::HTTP_NOT_FOUND);
+        $project = $this->resolveProjectOrNotFound($id);
+        if ($project instanceof JsonResponse) {
+            return $project;
         }
 
         return new JsonResponse([
@@ -143,9 +178,9 @@ class ProjectController extends AbstractController
     #[Route('/{projectId}/time-entries', name: 'api_projects_time_entries_list', methods: ['GET'])]
     public function listTimeEntries(int $projectId): JsonResponse
     {
-        $project = $this->projects->find($projectId);
-        if (!$project) {
-            return new JsonResponse(['message' => 'Not found'], Response::HTTP_NOT_FOUND);
+        $project = $this->resolveProjectOrNotFound($projectId);
+        if ($project instanceof JsonResponse) {
+            return $project;
         }
 
         $entries = $this->timeEntries->findBy(['project' => $project], ['date' => 'DESC']);
@@ -158,9 +193,9 @@ class ProjectController extends AbstractController
     #[Route('/{projectId}/time-entries', name: 'api_projects_time_entries_create', methods: ['POST'])]
     public function createTimeEntry(int $projectId, Request $request): JsonResponse
     {
-        $project = $this->projects->find($projectId);
-        if (!$project) {
-            return new JsonResponse(['message' => 'Not found'], Response::HTTP_NOT_FOUND);
+        $project = $this->resolveProjectOrNotFound($projectId);
+        if ($project instanceof JsonResponse) {
+            return $project;
         }
 
         $data = json_decode($request->getContent(), true);
@@ -194,9 +229,25 @@ class ProjectController extends AbstractController
         return new JsonResponse($this->serializeTimeEntry($entry), Response::HTTP_CREATED);
     }
 
+    private function resolveProjectOrNotFound(int $id): Project|JsonResponse
+    {
+        $project = $this->projects->find($id);
+        if (!$project) {
+            return new JsonResponse(['message' => 'Not found'], Response::HTTP_NOT_FOUND);
+        }
+        $user = $this->getUser();
+        if (!$user instanceof User || !$this->projectAccess->canAccess($user, $project)) {
+            return new JsonResponse(['message' => 'Not found'], Response::HTTP_NOT_FOUND);
+        }
+
+        return $project;
+    }
+
     /** @return array<string, mixed> */
     private function serializeProject(Project $p): array
     {
+        $company = $p->getCompany();
+
         return [
             'id' => $p->getId(),
             'name' => $p->getName(),
@@ -210,6 +261,10 @@ class ProjectController extends AbstractController
             'startDate' => $p->getStartDate()->format('Y-m-d'),
             'endDate' => $p->getEndDate()->format('Y-m-d'),
             'team' => $p->getTeam(),
+            'company' => $company ? [
+                'id' => $company->getId(),
+                'name' => $company->getName(),
+            ] : null,
         ];
     }
 

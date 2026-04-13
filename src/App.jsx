@@ -11,8 +11,10 @@ import Budget from './pages/Budget';
 import FinOps from './pages/FinOps';
 import Simulation from './pages/Simulation';
 import Settings from './pages/Settings';
+import Companies from './pages/Companies';
+import CompanyDetail from './pages/CompanyDetail';
 import { useAuthStore } from './store/authStore';
-import { ACCESS, getHomePath } from './utils/roles';
+import { ACCESS, ROLES, getHomePath } from './utils/roles';
 import HtmlLang from './components/HtmlLang';
 
 function HomeRedirect() {
@@ -70,6 +72,22 @@ function App() {
           />
           <Route path="projects" element={<Projects />} />
           <Route path="projects/:id" element={<ProjectDetail />} />
+          <Route
+            path="companies"
+            element={
+              <ProtectedRoute requiredRoles={[ROLES.ADMIN]}>
+                <Companies />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="companies/:id"
+            element={
+              <ProtectedRoute requiredRoles={[ROLES.ADMIN]}>
+                <CompanyDetail />
+              </ProtectedRoute>
+            }
+          />
           <Route
             path="budget"
             element={

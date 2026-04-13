@@ -55,6 +55,10 @@ class Project
     #[ORM\JoinColumn(nullable: true, onDelete: 'SET NULL')]
     private ?User $owner = null;
 
+    #[ORM\ManyToOne(targetEntity: Company::class, inversedBy: 'projects')]
+    #[ORM\JoinColumn(nullable: false, onDelete: 'CASCADE')]
+    private ?Company $company = null;
+
     /** @var Collection<int, TimeEntry> */
     #[ORM\OneToMany(targetEntity: TimeEntry::class, mappedBy: 'project', cascade: ['persist', 'remove'], orphanRemoval: true)]
     private Collection $timeEntries;
@@ -209,6 +213,18 @@ class Project
     public function setOwner(?User $owner): static
     {
         $this->owner = $owner;
+
+        return $this;
+    }
+
+    public function getCompany(): ?Company
+    {
+        return $this->company;
+    }
+
+    public function setCompany(?Company $company): static
+    {
+        $this->company = $company;
 
         return $this;
     }

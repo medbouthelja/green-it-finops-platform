@@ -1,9 +1,9 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useTranslation } from '../hooks/useTranslation';
 
-const ProjectForm = ({ project = null, onClose, onSave }) => {
+const ProjectForm = ({ project = null, onClose, onSave, isAdmin = false, companies = [] }) => {
   const { t } = useTranslation();
   const [formData, setFormData] = useState({
     name: project?.name || '',
@@ -14,7 +14,33 @@ const ProjectForm = ({ project = null, onClose, onSave }) => {
     tjm: project?.tjm || '',
     startDate: project?.startDate || '',
     endDate: project?.endDate || '',
+    companyId:
+      project?.company?.id != null
+        ? String(project.company.id)
+        : companies[0]?.id != null
+          ? String(companies[0].id)
+          : '',
   });
+
+  useEffect(() => {
+    const cid =
+      project?.company?.id != null
+        ? String(project.company.id)
+        : companies[0]?.id != null
+          ? String(companies[0].id)
+          : '';
+    setFormData({
+      name: project?.name || '',
+      description: project?.description || '',
+      status: project?.status || 'active',
+      methodology: project?.methodology || 'scrum',
+      budget: project?.budget || '',
+      tjm: project?.tjm || '',
+      startDate: project?.startDate || '',
+      endDate: project?.endDate || '',
+      companyId: cid,
+    });
+  }, [project, companies]);
 
   const [loading, setLoading] = useState(false);
 
@@ -29,10 +55,17 @@ const ProjectForm = ({ project = null, onClose, onSave }) => {
         return;
       }
 
+      if (isAdmin && (!formData.companyId || !companies.some((c) => String(c.id) === formData.companyId))) {
+        toast.error(t('projectForm.companyRequired'));
+        setLoading(false);
+        return;
+      }
+
       await onSave({
         ...formData,
         budget: parseFloat(formData.budget),
         tjm: parseFloat(formData.tjm),
+        companyId: isAdmin && formData.companyId ? Number(formData.companyId) : undefined,
       });
 
       toast.success(project ? t('projectForm.updated') : t('projectForm.created'));
@@ -86,6 +119,33 @@ const ProjectForm = ({ project = null, onClose, onSave }) => {
               placeholder={t('projectForm.descriptionPh')}
             />
           </div>
+
+          {isAdmin && companies.length === 0 && (
+            <p className="text-sm text-amber-800 bg-amber-50 border border-amber-200 p-3 rounded-lg">
+              {t('projectForm.noCompaniesHint')}
+            </p>
+          )}
+
+          {isAdmin && companies.length > 0 && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                {t('projectForm.company')} <span className="text-red-500">*</span>
+              </label>
+              <select
+                value={formData.companyId}
+                onChange={(e) => setFormData({ ...formData, companyId: e.target.value })}
+                className="input-field"
+                required
+              >
+                <option value="">{t('projectForm.companyPh')}</option>
+                {companies.map((c) => (
+                  <option key={c.id} value={String(c.id)}>
+                    {c.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
