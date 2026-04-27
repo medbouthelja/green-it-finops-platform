@@ -6,6 +6,7 @@ import { companyService } from '../services/companyService';
 import { userService } from '../services/userService';
 import { useTranslation } from '../hooks/useTranslation';
 import { getApiErrorMessage } from '../utils/apiErrorMessage';
+import { useAuthStore } from '../store/authStore';
 
 const emptyForm = {
   name: '',
@@ -16,6 +17,7 @@ const emptyForm = {
 
 export default function Companies() {
   const { t } = useTranslation();
+  const currentUser = useAuthStore((s) => s.user);
   const [list, setList] = useState([]);
   const [loading, setLoading] = useState(true);
   const [q, setQ] = useState('');
@@ -28,6 +30,8 @@ export default function Companies() {
   const [users, setUsers] = useState([]);
   const [usersLoading, setUsersLoading] = useState(true);
   const [assigningUserId, setAssigningUserId] = useState(null);
+  const [assigningRoleUserId, setAssigningRoleUserId] = useState(null);
+  const [deletingUserId, setDeletingUserId] = useState(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -59,12 +63,12 @@ export default function Companies() {
       const { data } = await userService.getAll();
       setUsers(Array.isArray(data) ? data : []);
     } catch {
-      toast.error('Unable to load users');
+      toast.error(t('companies.usersLoadError'));
       setUsers([]);
     } finally {
       setUsersLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     void loadUsers();
@@ -157,7 +161,7 @@ export default function Companies() {
       setUsers((prev) =>
         prev.map((u) => (Number(u.id) === Number(userId) ? data : u))
       );
-      toast.success('User assignment updated');
+      toast.success(t('companies.userAssignUpdated'));
     } catch (err) {
       if (err?.response?.status === 403) {
         toast.error(t('companies.saveForbidden'));
@@ -166,6 +170,46 @@ export default function Companies() {
       }
     } finally {
       setAssigningUserId(null);
+    }
+  };
+
+  const handleAssignRole = async (userId, role) => {
+    setAssigningRoleUserId(userId);
+    try {
+      const { data } = await userService.assignRole(userId, role);
+      setUsers((prev) => prev.map((u) => (Number(u.id) === Number(userId) ? data : u)));
+      toast.success(t('companies.roleUpdated'));
+    } catch (err) {
+      if (err?.response?.status === 403) {
+        toast.error(t('companies.saveForbidden'));
+      } else {
+        toast.error(getApiErrorMessage(err, t('companies.saveError')));
+      }
+    } finally {
+      setAssigningRoleUserId(null);
+    }
+  };
+
+  const handleDeleteUser = async (u) => {
+    if (!window.confirm(t('companies.deleteUserConfirm', { email: u.email }))) return;
+    setDeletingUserId(u.id);
+    try {
+      await userService.delete(u.id);
+      setUsers((prev) => prev.filter((row) => Number(row.id) !== Number(u.id)));
+      toast.success(t('companies.userDeleted'));
+    } catch (err) {
+      const status = err?.response?.status;
+      if (status === 403) {
+        toast.error(t('companies.saveForbidden'));
+      } else if (status === 409) {
+        toast.error(getApiErrorMessage(err, t('companies.deleteUserConflict')));
+      } else if (status === 400) {
+        toast.error(getApiErrorMessage(err, t('companies.deleteUserBadRequest')));
+      } else {
+        toast.error(getApiErrorMessage(err, t('companies.deleteUserError')));
+      }
+    } finally {
+      setDeletingUserId(null);
     }
   };
 
@@ -271,15 +315,16 @@ export default function Companies() {
 
       <div className="card overflow-x-auto">
         <div className="mb-4">
-          <h2 className="text-xl font-semibold text-gray-900">Users assignment</h2>
-          <p className="text-sm text-gray-600 mt-1">Assign each user to an entreprise.</p>
+          <h2 className="text-xl font-semibold text-gray-900">{t('companies.usersSectionTitle')}</h2>
+          <p className="text-sm text-gray-600 mt-1">{t('companies.usersSectionSubtitle')}</p>
         </div>
         <table className="min-w-full text-sm">
           <thead>
             <tr className="border-b border-gray-200 text-left text-gray-600">
-              <th className="py-3 pr-4 font-medium">User</th>
-              <th className="py-3 pr-4 font-medium">Role</th>
-              <th className="py-3 pr-4 font-medium">Entreprise</th>
+              <th className="py-3 pr-4 font-medium">{t('companies.userColumn')}</th>
+              <th className="py-3 pr-4 font-medium">{t('companies.roleColumn')}</th>
+              <th className="py-3 pr-4 font-medium">{t('companies.companyColumn')}</th>
+              <th className="py-3 pr-4 font-medium w-20">{t('companies.actionsColumn')}</th>
             </tr>
           </thead>
           <tbody>
@@ -292,8 +337,23 @@ export default function Companies() {
                       : u.email}
                   </div>
                   <div className="text-xs text-gray-500">{u.email}</div>
+                  {u.emailVerified === false && (
+                    <span className="text-xs text-amber-700">{t('companies.emailNotVerifiedBadge')}</span>
+                  )}
                 </td>
-                <td className="py-3 pr-4 text-gray-700">{u.role}</td>
+                <td className="py-3 pr-4">
+                  <select
+                    className="input-field min-w-[140px]"
+                    value={u.role}
+                    onChange={(e) => void handleAssignRole(Number(u.id), e.target.value)}
+                    disabled={assigningRoleUserId === u.id}
+                  >
+                    <option value="PENDING">PENDING</option>
+                    <option value="MANAGER">MANAGER</option>
+                    <option value="TECH_LEAD">TECH_LEAD</option>
+                    <option value="ADMIN">ADMIN</option>
+                  </select>
+                </td>
                 <td className="py-3 pr-4">
                   <select
                     className="input-field"
@@ -301,7 +361,7 @@ export default function Companies() {
                     onChange={(e) => void handleAssignCompany(Number(u.id), e.target.value)}
                     disabled={assigningUserId === u.id}
                   >
-                    <option value="">No entreprise</option>
+                    <option value="">{t('companies.noCompany')}</option>
                     {list.map((c) => (
                       <option key={c.id} value={String(c.id)}>
                         {c.name}
@@ -309,12 +369,31 @@ export default function Companies() {
                     ))}
                   </select>
                 </td>
+                <td className="py-3 pr-4">
+                  <button
+                    type="button"
+                    onClick={() => void handleDeleteUser(u)}
+                    disabled={
+                      deletingUserId === u.id ||
+                      (currentUser && Number(currentUser.id) === Number(u.id))
+                    }
+                    className="p-2 rounded-lg text-red-600 hover:bg-red-50 disabled:opacity-40 disabled:cursor-not-allowed"
+                    title={
+                      currentUser && Number(currentUser.id) === Number(u.id)
+                        ? t('companies.deleteUserSelfHint')
+                        : t('common.delete')
+                    }
+                    aria-label={t('companies.deleteUserAria')}
+                  >
+                    <Trash2 size={16} />
+                  </button>
+                </td>
               </tr>
             ))}
           </tbody>
         </table>
         {!usersLoading && users.length === 0 && (
-          <p className="text-center py-8 text-gray-500">No users found.</p>
+          <p className="text-center py-8 text-gray-500">{t('companies.noUsers')}</p>
         )}
       </div>
 

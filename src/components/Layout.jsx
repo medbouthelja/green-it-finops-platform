@@ -294,6 +294,11 @@ const Layout = () => {
 
           {/* Page content */}
           <div className="p-6">
+            {user?.role === ROLES.PENDING && (
+              <div className="mb-4 rounded-xl border border-amber-200/80 bg-amber-50/90 text-amber-950 px-4 py-3 text-sm shadow-sm">
+                {t('layout.pendingBanner')}
+              </div>
+            )}
             <Outlet />
           </div>
         </main>

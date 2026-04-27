@@ -4,6 +4,8 @@ import { Toaster } from 'react-hot-toast';
 import Layout from './components/Layout';
 import ProtectedRoute from './components/ProtectedRoute';
 import Login from './pages/Login';
+import Register from './pages/Register';
+import VerifySignup from './pages/VerifySignup';
 import Dashboard from './pages/Dashboard';
 import Projects from './pages/Projects';
 import ProjectDetail from './pages/ProjectDetail';
@@ -18,15 +20,24 @@ import { ACCESS, ROLES, getHomePath } from './utils/roles';
 import HtmlLang from './components/HtmlLang';
 
 function HomeRedirect() {
-  return <Navigate to={getHomePath()} replace />;
+  const user = useAuthStore((s) => s.user);
+  return <Navigate to={getHomePath(user)} replace />;
 }
 
 function AuthenticatedHomeGate() {
-  const { isAuthenticated } = useAuthStore();
+  const { isAuthenticated, user } = useAuthStore();
   if (isAuthenticated) {
-    return <Navigate to={getHomePath()} replace />;
+    return <Navigate to={getHomePath(user)} replace />;
   }
   return <Login />;
+}
+
+function RegisterGate() {
+  const { isAuthenticated, user } = useAuthStore();
+  if (isAuthenticated) {
+    return <Navigate to={getHomePath(user)} replace />;
+  }
+  return <Register />;
 }
 
 function App() {
@@ -53,6 +64,8 @@ function App() {
       <Toaster position="top-right" />
       <Routes>
         <Route path="/login" element={<AuthenticatedHomeGate />} />
+        <Route path="/register" element={<RegisterGate />} />
+        <Route path="/verify-signup" element={<VerifySignup />} />
         <Route
           path="/"
           element={
@@ -70,8 +83,22 @@ function App() {
               </ProtectedRoute>
             }
           />
-          <Route path="projects" element={<Projects />} />
-          <Route path="projects/:id" element={<ProjectDetail />} />
+          <Route
+            path="projects"
+            element={
+              <ProtectedRoute requiredRoles={ACCESS.DASHBOARD}>
+                <Projects />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="projects/:id"
+            element={
+              <ProtectedRoute requiredRoles={ACCESS.DASHBOARD}>
+                <ProjectDetail />
+              </ProtectedRoute>
+            }
+          />
           <Route
             path="companies"
             element={

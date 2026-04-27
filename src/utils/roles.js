@@ -2,6 +2,7 @@ export const ROLES = {
   ADMIN: 'ADMIN',
   MANAGER: 'MANAGER',
   TECH_LEAD: 'TECH_LEAD',
+  PENDING: 'PENDING',
 };
 
 /**
@@ -32,11 +33,17 @@ export const hasAnyRole = (user, roles) => {
 /** Route ou action : admin a toujours accès. */
 export const canAccess = (user, requiredRoles) => {
   if (!user) return false;
+  if (user.role === ROLES.PENDING) return false;
   if (user.role === ROLES.ADMIN) return true;
   return requiredRoles.includes(user.role);
 };
 
-export const getHomePath = () => '/dashboard';
+export const getHomePath = (user) => {
+  if (user?.role === ROLES.PENDING) {
+    return '/settings';
+  }
+  return '/dashboard';
+};
 
 export const canManageProjectsCrud = (user) => canAccess(user, ACCESS.PROJECT_CRUD);
 

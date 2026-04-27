@@ -30,7 +30,7 @@ class JwtAuthenticator extends AbstractAuthenticator
             return false;
         }
 
-        if (str_starts_with($path, '/api/auth/login')) {
+        if (str_starts_with($path, '/api/auth/')) {
             return false;
         }
 

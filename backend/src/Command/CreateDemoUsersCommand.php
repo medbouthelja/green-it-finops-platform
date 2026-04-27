@@ -46,6 +46,7 @@ class CreateDemoUsersCommand extends Command
             $user->setFirstName($firstName);
             $user->setLastName($lastName);
             $user->setPassword($this->passwordHasher->hashPassword($user, 'password'));
+            $user->setEmailVerified(true);
             if (\in_array('ROLE_ADMIN', $roles, true)) {
                 $user->setCompany(null);
             } elseif ($defaultCompany instanceof Company) {

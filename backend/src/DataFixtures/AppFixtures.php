@@ -44,6 +44,7 @@ class AppFixtures extends Fixture
         $admin->setRoles(['ROLE_ADMIN']);
         $admin->setFirstName('Admin');
         $admin->setLastName('Demo');
+        $admin->setEmailVerified(true);
         $manager->persist($admin);
 
         $managerUser = new User();
@@ -53,6 +54,7 @@ class AppFixtures extends Fixture
         $managerUser->setFirstName('Sophie');
         $managerUser->setLastName('Bernard');
         $managerUser->setCompany($acme);
+        $managerUser->setEmailVerified(true);
         $manager->persist($managerUser);
 
         $techLead = new User();
@@ -62,6 +64,7 @@ class AppFixtures extends Fixture
         $techLead->setFirstName('Alex');
         $techLead->setLastName('Morel');
         $techLead->setCompany($acme);
+        $techLead->setEmailVerified(true);
         $manager->persist($techLead);
 
         $manager->flush();

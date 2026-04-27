@@ -29,7 +29,9 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     // Ne pas rediriger si on est déjà sur la page de login
-    if (error.response?.status === 401 && window.location.pathname !== '/login') {
+    const path = window.location.pathname;
+    const publicAuthPaths = ['/login', '/register', '/verify-signup'];
+    if (error.response?.status === 401 && !publicAuthPaths.includes(path)) {
       localStorage.removeItem('token');
       localStorage.removeItem('user');
       window.location.href = '/login';

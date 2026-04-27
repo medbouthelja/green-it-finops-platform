@@ -1,4 +1,4 @@
-# Connexion : DATABASE_URL (PostgreSQL en prod ; .env.local peut utiliser sqlite:// pour le dev sans Docker).
+# Connexion : DATABASE_URL (PostgreSQL ; surcharger dans .env.local si besoin).
 doctrine:
     dbal:
         url: '%env(resolve:DATABASE_URL)%'

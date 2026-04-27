@@ -10,7 +10,7 @@ const ProtectedRoute = ({ children, requiredRoles }) => {
   }
 
   if (requiredRoles && !canAccess(user, requiredRoles)) {
-    return <Navigate to={getHomePath()} replace />;
+    return <Navigate to={getHomePath(user)} replace />;
   }
 
   return children;

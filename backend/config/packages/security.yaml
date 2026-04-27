@@ -14,7 +14,7 @@ security:
             pattern: ^/$
             security: false
         login:
-            pattern: ^/api/auth/login$
+            pattern: ^/api/auth/(login|register|verify-signup|verify-login)$
             stateless: true
             security: false
         api:
@@ -25,7 +25,7 @@ security:
             custom_authenticators:
                 - App\Security\JwtAuthenticator
     access_control:
-        - { path: ^/api/auth/login, roles: PUBLIC_ACCESS }
+        - { path: ^/api/auth/(login|register|verify-signup|verify-login)$, roles: PUBLIC_ACCESS }
         - { path: ^/api, roles: PUBLIC_ACCESS, methods: [OPTIONS] }
         - { path: ^/api, roles: ROLE_USER }
 

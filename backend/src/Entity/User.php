@@ -36,6 +36,22 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     #[ORM\JoinColumn(nullable: true, onDelete: 'SET NULL')]
     private ?Company $company = null;
 
+    /** Default true so existing rows stay verified when the column is added. */
+    #[ORM\Column(options: ['default' => true])]
+    private bool $emailVerified = true;
+
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $signupCodeHash = null;
+
+    #[ORM\Column(nullable: true)]
+    private ?\DateTimeImmutable $signupCodeExpiresAt = null;
+
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $loginCodeHash = null;
+
+    #[ORM\Column(nullable: true)]
+    private ?\DateTimeImmutable $loginCodeExpiresAt = null;
+
     public function getId(): ?int
     {
         return $this->id;
@@ -126,9 +142,13 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
         return $this;
     }
 
-    /** Role label for the React app (ADMIN, MANAGER, TECH_LEAD) */
+    /** Role label for the React app (ADMIN, MANAGER, TECH_LEAD, PENDING) */
     public function getApiRole(): string
     {
+        if (\in_array('ROLE_PENDING', $this->roles, true)) {
+            return 'PENDING';
+        }
+
         foreach ($this->getRoles() as $role) {
             if (str_starts_with($role, 'ROLE_') && 'ROLE_USER' !== $role) {
                 return str_replace('ROLE_', '', $role);
@@ -136,5 +156,81 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
         }
 
         return 'MANAGER';
+    }
+
+    public function isEmailVerified(): bool
+    {
+        return $this->emailVerified;
+    }
+
+    public function setEmailVerified(bool $emailVerified): static
+    {
+        $this->emailVerified = $emailVerified;
+
+        return $this;
+    }
+
+    public function getSignupCodeHash(): ?string
+    {
+        return $this->signupCodeHash;
+    }
+
+    public function setSignupCodeHash(?string $signupCodeHash): static
+    {
+        $this->signupCodeHash = $signupCodeHash;
+
+        return $this;
+    }
+
+    public function getSignupCodeExpiresAt(): ?\DateTimeImmutable
+    {
+        return $this->signupCodeExpiresAt;
+    }
+
+    public function setSignupCodeExpiresAt(?\DateTimeImmutable $signupCodeExpiresAt): static
+    {
+        $this->signupCodeExpiresAt = $signupCodeExpiresAt;
+
+        return $this;
+    }
+
+    public function getLoginCodeHash(): ?string
+    {
+        return $this->loginCodeHash;
+    }
+
+    public function setLoginCodeHash(?string $loginCodeHash): static
+    {
+        $this->loginCodeHash = $loginCodeHash;
+
+        return $this;
+    }
+
+    public function getLoginCodeExpiresAt(): ?\DateTimeImmutable
+    {
+        return $this->loginCodeExpiresAt;
+    }
+
+    public function setLoginCodeExpiresAt(?\DateTimeImmutable $loginCodeExpiresAt): static
+    {
+        $this->loginCodeExpiresAt = $loginCodeExpiresAt;
+
+        return $this;
+    }
+
+    public function clearSignupVerification(): static
+    {
+        $this->signupCodeHash = null;
+        $this->signupCodeExpiresAt = null;
+
+        return $this;
+    }
+
+    public function clearLoginVerification(): static
+    {
+        $this->loginCodeHash = null;
+        $this->loginCodeExpiresAt = null;
+
+        return $this;
     }
 }

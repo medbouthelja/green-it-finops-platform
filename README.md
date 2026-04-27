@@ -38,6 +38,8 @@ php bin/console doctrine:fixtures:load --no-interaction
 php -S localhost:8000 -t public
 ```
 
+Inscription / code e-mail : voir `backend/README.md` (`/api/auth/register`, `verify-signup`, `verify-login`). Variable **`LOGIN_EMAIL_CODE`** dans `backend/.env` : `0` = JWT direct après mot de passe (fixtures), `1` = code à 6 chiffres (logs serveur `WARNING` tant qu’aucun SMTP n’est branché).
+
 L’API : `http://localhost:8000/api` — détail des routes : [backend/README.md](backend/README.md).
 
 ### 3. Frontend
